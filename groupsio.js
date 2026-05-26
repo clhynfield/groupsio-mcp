@@ -310,5 +310,22 @@ export function createToolHandlers(client, defaultGroup) {
     };
   }
 
-  return { listDatabases, describeDatabase, queryDatabase };
+  async function getGroup({ group_name } = {}) {
+    const group = resolveGroup(group_name, defaultGroup);
+    const g = await client.apiGet("getgroup", { group_name: group });
+
+    const lines = [
+      `Group: "${g.name}"`,
+      `Plan: ${g.plan}`,
+      `Members: ${g.subs_count}`,
+      `Email: ${g.email_address ?? g.email ?? "(not set)"}`,
+      `Description: ${g.plain_desc || "(no description)"}`,
+    ];
+
+    return {
+      content: [{ type: "text", text: lines.join("\n") }],
+    };
+  }
+
+  return { listDatabases, describeDatabase, queryDatabase, getGroup };
 }

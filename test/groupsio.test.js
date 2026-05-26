@@ -731,3 +731,80 @@ describe("queryDatabase", () => {
     expect(callParams.limit).toBe(100);
   });
 });
+
+// ---------------------------------------------------------------------------
+// getGroup
+// ---------------------------------------------------------------------------
+
+describe("getGroup", () => {
+  /** Fake client whose apiGet is a spy returning fixed group data. */
+  function fakeGroupClient(groupData) {
+    return {
+      fetchAllPages: async () => [],
+      apiGet: vi.fn().mockResolvedValue(groupData),
+    };
+  }
+
+  it("returns formatted group info including name, plan, members, and description", async () => {
+    const client = fakeGroupClient({
+      name: "MyGroup",
+      subs_count: 541,
+      plan: "group_plan_premium",
+      email: "mygroup@groups.io",
+      plain_desc: "Eye some contrast as width yourself stand",
+    });
+    const { getGroup } = createToolHandlers(client, "MyGroup");
+
+    const result = await getGroup({});
+
+    const text = result.content[0].text;
+    expect(text).toContain('Group: "MyGroup"');
+    expect(text).toContain("Plan: group_plan_premium");
+    expect(text).toContain("Members: 541");
+    expect(text).toContain("Eye some contrast as width yourself stand");
+  });
+
+  it("calls apiGet with the correct endpoint and resolved group name", async () => {
+    const client = fakeGroupClient({
+      name: "explicit-group",
+      subs_count: 0,
+      plan: "free",
+      plain_desc: "",
+    });
+    const { getGroup } = createToolHandlers(client, "default-group");
+
+    await getGroup({ group_name: "explicit-group" });
+
+    expect(client.apiGet).toHaveBeenCalledWith("getgroup", {
+      group_name: "explicit-group",
+    });
+  });
+
+  it("falls back to the default group when group_name is omitted", async () => {
+    const client = fakeGroupClient({
+      name: "default-group",
+      subs_count: 0,
+      plan: "free",
+      plain_desc: "",
+    });
+    const { getGroup } = createToolHandlers(client, "default-group");
+
+    await getGroup({});
+
+    expect(client.apiGet).toHaveBeenCalledWith("getgroup", {
+      group_name: "default-group",
+    });
+  });
+
+  it("throws when no group name is available", async () => {
+    const client = fakeGroupClient({
+      name: "x",
+      subs_count: 0,
+      plan: "free",
+      plain_desc: "",
+    });
+    const { getGroup } = createToolHandlers(client, undefined);
+
+    await expect(getGroup({})).rejects.toThrow("No group specified");
+  });
+});

@@ -922,11 +922,20 @@ describe("listSubgroups", () => {
     const result = await listSubgroups({ group_name: "parentgroup" });
 
     const text = result.content[0].text;
-    expect(text).toContain("alpha");
-    expect(text).toContain("42");
-    expect(text).toContain("Alpha subgroup");
-    expect(text).toContain("beta");
-    expect(text).toContain("7");
+    expect(text).toContain('Subgroups in "parentgroup":');
+    expect(text).toContain("- alpha | 42 members | Alpha subgroup");
+    expect(text).toContain("- beta | 7 members");
+  });
+
+  it("omits the description segment when plain_desc is empty", async () => {
+    const client = fakeListClient([
+      { name: "beta", subs_count: 7, plain_desc: "" },
+    ]);
+    const { listSubgroups } = createToolHandlers(client, "parentgroup");
+
+    const result = await listSubgroups({ group_name: "parentgroup" });
+
+    expect(result.content[0].text).not.toContain("beta | 7 members |");
   });
 
   it("calls fetchAllPages with getsubgroups and the resolved group_name", async () => {

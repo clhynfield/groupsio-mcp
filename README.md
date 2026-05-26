@@ -7,6 +7,7 @@ An MCP server for Groups.io, enabling conversational querying of group info, mem
 | Tool | Description |
 |---|---|
 | `get_group` | Get settings and info for a group (name, plan, member count, description) |
+| `get_subscriptions` | List all groups the authenticated user is subscribed to, with role and delivery info |
 | `get_members` | List members of a group, with optional filter (members, mods, pending, banned, bouncing) |
 | `list_databases` | List all database tables in a group |
 | `describe_database` | Get column schema for a specific table |
@@ -61,6 +62,8 @@ After editing, restart Claude Desktop.
 
 Once connected, you can ask Claude things like:
 
+- *"What groups am I subscribed to?"*
+- *"Which groups am I an owner or moderator of?"*
 - *"What group am I connected to?"*
 - *"How many members does this group have?"*
 - *"List the moderators of this group"*

@@ -30,6 +30,15 @@ function textResult(text) {
 }
 
 /**
+ * Derive a human-readable role from a Groups.io mod_status string.
+ */
+function deriveRole(mod_status) {
+  if (mod_status === "sub_modstatus_owner") return "owner";
+  if (mod_status === "sub_modstatus_moderator") return "moderator";
+  return "member";
+}
+
+/**
  * Extract a human-readable value from a single `vals` entry.
  * The API stores values in type-specific fields, not a generic `value` field.
  */
@@ -333,11 +342,27 @@ export function createToolHandlers(client, defaultGroup) {
     return textResult(`Members in "${group}" (${resolvedType}): ${body}`);
   }
 
+  async function getSubscriptions({} = {}) {
+    const subs = await client.fetchAllPages("getsubs", {});
+
+    if (subs.length === 0) {
+      return textResult("Not subscribed to any groups.");
+    }
+
+    const lines = subs.map(
+      (s) =>
+        `- ${s.group_name} (id: ${s.group_id}) | ${s.subs_count} members | delivery: ${s.email_delivery} | role: ${deriveRole(s.mod_status)}`,
+    );
+
+    return textResult(`Subscribed groups: ${subs.length}\n${lines.join("\n")}`);
+  }
+
   return {
     listDatabases,
     describeDatabase,
     queryDatabase,
     getGroup,
     getMembers,
+    getSubscriptions,
   };
 }

@@ -80,6 +80,15 @@ server.tool(
   handlers.getMembers,
 );
 
+// --- get_subscriptions -----------------------------------------------------
+
+server.tool(
+  "get_subscriptions",
+  "List all Groups.io groups the authenticated user is subscribed to, including role and delivery settings for each.",
+  {},
+  handlers.getSubscriptions,
+);
+
 // --- list_databases ---------------------------------------------------------
 
 server.tool(

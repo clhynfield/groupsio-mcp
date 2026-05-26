@@ -33,6 +33,14 @@ function fakeClient({ tables = [], rowPages = [] } = {}) {
   };
 }
 
+/** Builds a fake client whose fetchAllPages always resolves with the given items. */
+function fakeListClient(items) {
+  return {
+    fetchAllPages: vi.fn().mockResolvedValue(items),
+    apiGet: vi.fn().mockResolvedValue({}),
+  };
+}
+
 // ---------------------------------------------------------------------------
 // resolveGroup
 // ---------------------------------------------------------------------------
@@ -814,16 +822,8 @@ describe("getGroup", () => {
 // ---------------------------------------------------------------------------
 
 describe("getMembers", () => {
-  /** Fake client whose fetchAllPages is a spy returning a fixed member list. */
-  function fakeMembersClient(members) {
-    return {
-      fetchAllPages: vi.fn().mockResolvedValue(members),
-      apiGet: vi.fn().mockResolvedValue({}),
-    };
-  }
-
   it("returns a formatted list of members with email, full_name, email_delivery, and status", async () => {
-    const client = fakeMembersClient([
+    const client = fakeListClient([
       {
         email: "alice@example.com",
         full_name: "Alice Smith",
@@ -855,7 +855,7 @@ describe("getMembers", () => {
   });
 
   it("passes the correct group_name and type to fetchAllPages", async () => {
-    const client = fakeMembersClient([]);
+    const client = fakeListClient([]);
     const { getMembers } = createToolHandlers(client, "default-group");
 
     await getMembers({ group_name: "explicit-group", type: "mods" });
@@ -867,7 +867,7 @@ describe("getMembers", () => {
   });
 
   it('defaults type to "members" when omitted', async () => {
-    const client = fakeMembersClient([]);
+    const client = fakeListClient([]);
     const { getMembers } = createToolHandlers(client, "testgroup");
 
     await getMembers({ group_name: "testgroup" });
@@ -879,7 +879,7 @@ describe("getMembers", () => {
   });
 
   it("falls back to defaultGroup when group_name is omitted", async () => {
-    const client = fakeMembersClient([]);
+    const client = fakeListClient([]);
     const { getMembers } = createToolHandlers(client, "my-default");
 
     await getMembers({});
@@ -891,18 +891,119 @@ describe("getMembers", () => {
   });
 
   it("throws when no group is available", async () => {
-    const client = fakeMembersClient([]);
+    const client = fakeListClient([]);
     const { getMembers } = createToolHandlers(client, undefined);
 
     await expect(getMembers({})).rejects.toThrow("No group specified");
   });
 
   it("returns a no-members-found message when the list is empty", async () => {
-    const client = fakeMembersClient([]);
+    const client = fakeListClient([]);
     const { getMembers } = createToolHandlers(client, "testgroup");
 
     const result = await getMembers({ group_name: "testgroup" });
 
     expect(result.content[0].text).toContain("No members found.");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getSubscriptions
+// ---------------------------------------------------------------------------
+
+describe("getSubscriptions", () => {
+  it("returns a formatted list of subscriptions with group_name, group_id, subs_count, email_delivery, and derived role", async () => {
+    const client = fakeListClient([
+      {
+        group_name: "MyGroup",
+        group_id: 123,
+        subs_count: 541,
+        most_recent_message: "2024-01-15",
+        mod_status: "sub_modstatus_owner",
+        email_delivery: "email_delivery_single",
+        status: "sub_status_normal",
+      },
+      {
+        group_name: "AnotherGroup",
+        group_id: 456,
+        subs_count: 12,
+        most_recent_message: "2024-01-10",
+        mod_status: "sub_modstatus_none",
+        email_delivery: "email_delivery_digest",
+        status: "sub_status_normal",
+      },
+    ]);
+    const { getSubscriptions } = createToolHandlers(client, undefined);
+
+    const result = await getSubscriptions({});
+
+    const text = result.content[0].text;
+    expect(text).toContain("Subscribed groups: 2");
+    expect(text).toContain(
+      "- MyGroup (id: 123) | 541 members | delivery: email_delivery_single | role: owner",
+    );
+    expect(text).toContain(
+      "- AnotherGroup (id: 456) | 12 members | delivery: email_delivery_digest | role: member",
+    );
+  });
+
+  it('calls fetchAllPages with "getsubs" and no group filtering', async () => {
+    const client = fakeListClient([]);
+    const { getSubscriptions } = createToolHandlers(
+      client,
+      "some-default-group",
+    );
+
+    await getSubscriptions({});
+
+    expect(client.fetchAllPages).toHaveBeenCalledWith("getsubs", {});
+  });
+
+  it("correctly derives role from mod_status", async () => {
+    const client = fakeListClient([
+      {
+        group_name: "OwnerGroup",
+        group_id: 1,
+        subs_count: 10,
+        mod_status: "sub_modstatus_owner",
+        email_delivery: "email_delivery_single",
+        status: "sub_status_normal",
+      },
+      {
+        group_name: "ModGroup",
+        group_id: 2,
+        subs_count: 20,
+        mod_status: "sub_modstatus_moderator",
+        email_delivery: "email_delivery_single",
+        status: "sub_status_normal",
+      },
+      {
+        group_name: "MemberGroup",
+        group_id: 3,
+        subs_count: 30,
+        mod_status: "sub_modstatus_none",
+        email_delivery: "email_delivery_single",
+        status: "sub_status_normal",
+      },
+    ]);
+    const { getSubscriptions } = createToolHandlers(client, undefined);
+
+    const result = await getSubscriptions({});
+
+    const text = result.content[0].text;
+    expect(text).toContain("role: owner");
+    expect(text).toContain("role: moderator");
+    expect(text).toContain(
+      "- MemberGroup (id: 3) | 30 members | delivery: email_delivery_single | role: member",
+    );
+  });
+
+  it('returns "Not subscribed to any groups." when the list is empty', async () => {
+    const client = fakeListClient([]);
+    const { getSubscriptions } = createToolHandlers(client, undefined);
+
+    const result = await getSubscriptions({});
+
+    expect(result.content[0].text).toBe("Not subscribed to any groups.");
   });
 });

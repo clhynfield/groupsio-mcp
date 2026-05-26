@@ -55,6 +55,31 @@ server.tool(
   handlers.getGroup,
 );
 
+// --- get_members -----------------------------------------------------------
+
+server.tool(
+  "get_members",
+  "List members of a Groups.io group. Can filter by type: members (default), mods, pending, banned, or bouncing.",
+  {
+    group_name: z
+      .string()
+      .optional()
+      .describe(
+        `Name of the Groups.io group (e.g. "mygroup" or "mygroup+subgroup"). ` +
+          `Defaults to GROUPSIO_GROUP env var if set.`,
+      ),
+    type: z
+      .enum(["members", "mods", "pending", "banned", "bouncing"])
+      .optional()
+      .describe(
+        'Which members to return. Defaults to "members" (all active members). ' +
+          'Use "mods" for moderators/owners, "pending" for applicants awaiting approval, ' +
+          '"banned" for banned members, "bouncing" for members with delivery problems.',
+      ),
+  },
+  handlers.getMembers,
+);
+
 // --- list_databases ---------------------------------------------------------
 
 server.tool(

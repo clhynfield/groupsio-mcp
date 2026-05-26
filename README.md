@@ -7,6 +7,7 @@ An MCP server for Groups.io, enabling conversational querying of group info, mem
 | Tool | Description |
 |---|---|
 | `get_group` | Get settings and info for a group (name, plan, member count, description) |
+| `get_members` | List members of a group, with optional filter (members, mods, pending, banned, bouncing) |
 | `list_databases` | List all database tables in a group |
 | `describe_database` | Get column schema for a specific table |
 | `query_database` | Fetch all rows as structured records, auto-paginated |
@@ -62,6 +63,8 @@ Once connected, you can ask Claude things like:
 
 - *"What group am I connected to?"*
 - *"How many members does this group have?"*
+- *"List the moderators of this group"*
+- *"Are there any pending members waiting for approval?"*
 - *"List the databases in my group"*
 - *"What columns does the Members database have?"*
 - *"Query the contacts database and find everyone in Ohio"*

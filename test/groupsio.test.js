@@ -808,3 +808,101 @@ describe("getGroup", () => {
     await expect(getGroup({})).rejects.toThrow("No group specified");
   });
 });
+
+// ---------------------------------------------------------------------------
+// getMembers
+// ---------------------------------------------------------------------------
+
+describe("getMembers", () => {
+  /** Fake client whose fetchAllPages is a spy returning a fixed member list. */
+  function fakeMembersClient(members) {
+    return {
+      fetchAllPages: vi.fn().mockResolvedValue(members),
+      apiGet: vi.fn().mockResolvedValue({}),
+    };
+  }
+
+  it("returns a formatted list of members with email, full_name, email_delivery, and status", async () => {
+    const client = fakeMembersClient([
+      {
+        email: "alice@example.com",
+        full_name: "Alice Smith",
+        email_delivery: "email_delivery_single",
+        status: "sub_status_normal",
+      },
+      {
+        email: "bob@example.com",
+        full_name: "Bob Jones",
+        email_delivery: "email_delivery_digest",
+        status: "sub_status_normal",
+      },
+    ]);
+    const { getMembers } = createToolHandlers(client, "testgroup");
+
+    const result = await getMembers({
+      group_name: "testgroup",
+      type: "members",
+    });
+
+    const text = result.content[0].text;
+    expect(text).toContain('Members in "testgroup" (members): 2 found');
+    expect(text).toContain(
+      "alice@example.com | Alice Smith | delivery: email_delivery_single | status: sub_status_normal",
+    );
+    expect(text).toContain(
+      "bob@example.com | Bob Jones | delivery: email_delivery_digest | status: sub_status_normal",
+    );
+  });
+
+  it("passes the correct group_name and type to fetchAllPages", async () => {
+    const client = fakeMembersClient([]);
+    const { getMembers } = createToolHandlers(client, "default-group");
+
+    await getMembers({ group_name: "explicit-group", type: "mods" });
+
+    expect(client.fetchAllPages).toHaveBeenCalledWith("getmembers", {
+      group_name: "explicit-group",
+      type: "mods",
+    });
+  });
+
+  it('defaults type to "members" when omitted', async () => {
+    const client = fakeMembersClient([]);
+    const { getMembers } = createToolHandlers(client, "testgroup");
+
+    await getMembers({ group_name: "testgroup" });
+
+    expect(client.fetchAllPages).toHaveBeenCalledWith("getmembers", {
+      group_name: "testgroup",
+      type: "members",
+    });
+  });
+
+  it("falls back to defaultGroup when group_name is omitted", async () => {
+    const client = fakeMembersClient([]);
+    const { getMembers } = createToolHandlers(client, "my-default");
+
+    await getMembers({});
+
+    expect(client.fetchAllPages).toHaveBeenCalledWith("getmembers", {
+      group_name: "my-default",
+      type: "members",
+    });
+  });
+
+  it("throws when no group is available", async () => {
+    const client = fakeMembersClient([]);
+    const { getMembers } = createToolHandlers(client, undefined);
+
+    await expect(getMembers({})).rejects.toThrow("No group specified");
+  });
+
+  it("returns a no-members-found message when the list is empty", async () => {
+    const client = fakeMembersClient([]);
+    const { getMembers } = createToolHandlers(client, "testgroup");
+
+    const result = await getMembers({ group_name: "testgroup" });
+
+    expect(result.content[0].text).toContain("No members found.");
+  });
+});

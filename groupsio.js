@@ -23,6 +23,13 @@ export function resolveGroup(groupName, defaultGroup) {
 }
 
 /**
+ * Wrap a plain text string in the MCP content envelope every tool handler returns.
+ */
+function textResult(text) {
+  return { content: [{ type: "text", text }] };
+}
+
+/**
  * Extract a human-readable value from a single `vals` entry.
  * The API stores values in type-specific fields, not a generic `value` field.
  */
@@ -195,9 +202,7 @@ export function createToolHandlers(client, defaultGroup) {
     });
 
     if (tables.length === 0) {
-      return {
-        content: [{ type: "text", text: "No databases found in this group." }],
-      };
+      return textResult("No databases found in this group.");
     }
 
     const lines = tables.map(
@@ -207,14 +212,7 @@ export function createToolHandlers(client, defaultGroup) {
         ` [${(t.columns ?? []).length} columns]`,
     );
 
-    return {
-      content: [
-        {
-          type: "text",
-          text: `Databases in "${group}":\n\n${lines.join("\n")}`,
-        },
-      ],
-    };
+    return textResult(`Databases in "${group}":\n\n${lines.join("\n")}`);
   }
 
   async function describeDatabase({ group_name, table_name, table_id }) {
@@ -230,14 +228,9 @@ export function createToolHandlers(client, defaultGroup) {
     const columns = table.columns ?? [];
 
     if (columns.length === 0) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Table "${table.name}" (id: ${table.id}) has no columns defined.`,
-          },
-        ],
-      };
+      return textResult(
+        `Table "${table.name}" (id: ${table.id}) has no columns defined.`,
+      );
     }
 
     const colLines = columns.map(
@@ -249,7 +242,7 @@ export function createToolHandlers(client, defaultGroup) {
       (table.desc ? `Description: ${table.desc}\n` : "") +
       `\nColumns (${columns.length}):\n${colLines.join("\n")}`;
 
-    return { content: [{ type: "text", text }] };
+    return textResult(text);
   }
 
   async function queryDatabase({
@@ -300,14 +293,7 @@ export function createToolHandlers(client, defaultGroup) {
       (truncated ? ` (truncated at max_rows=${max_rows})` : "") +
       `\nColumns: ${columns.map((c) => c.name).join(", ")}\n\n`;
 
-    return {
-      content: [
-        {
-          type: "text",
-          text: summary + JSON.stringify(records, null, 2),
-        },
-      ],
-    };
+    return textResult(summary + JSON.stringify(records, null, 2));
   }
 
   async function getGroup({ group_name } = {}) {
@@ -322,10 +308,36 @@ export function createToolHandlers(client, defaultGroup) {
       `Description: ${g.plain_desc || "(no description)"}`,
     ];
 
-    return {
-      content: [{ type: "text", text: lines.join("\n") }],
-    };
+    return textResult(lines.join("\n"));
   }
 
-  return { listDatabases, describeDatabase, queryDatabase, getGroup };
+  async function getMembers({ group_name, type } = {}) {
+    const group = resolveGroup(group_name, defaultGroup);
+    const resolvedType = type || "members";
+    const members = await client.fetchAllPages("getmembers", {
+      group_name: group,
+      type: resolvedType,
+    });
+
+    const body =
+      members.length === 0
+        ? "No members found."
+        : `${members.length} found\n\n` +
+          members
+            .map(
+              (m) =>
+                `- ${m.email} | ${m.full_name} | delivery: ${m.email_delivery} | status: ${m.status}`,
+            )
+            .join("\n");
+
+    return textResult(`Members in "${group}" (${resolvedType}): ${body}`);
+  }
+
+  return {
+    listDatabases,
+    describeDatabase,
+    queryDatabase,
+    getGroup,
+    getMembers,
+  };
 }

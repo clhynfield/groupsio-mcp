@@ -80,6 +80,23 @@ server.tool(
   handlers.getMembers,
 );
 
+// --- list_subgroups --------------------------------------------------------
+
+server.tool(
+  "list_subgroups",
+  "List all subgroups of a Groups.io parent group, with member count and description for each.",
+  {
+    group_name: z
+      .string()
+      .optional()
+      .describe(
+        `Name of the parent Groups.io group (e.g. "mygroup"). ` +
+          `Defaults to GROUPSIO_GROUP env var if set.`,
+      ),
+  },
+  handlers.listSubgroups,
+);
+
 // --- get_subscriptions -----------------------------------------------------
 
 server.tool(

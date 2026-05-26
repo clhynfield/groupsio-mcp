@@ -9,6 +9,7 @@ An MCP server for Groups.io, enabling conversational querying of group info, mem
 | `get_group` | Get settings and info for a group (name, plan, member count, description) |
 | `get_subscriptions` | List all groups the authenticated user is subscribed to, with role and delivery info |
 | `get_members` | List members of a group, with optional filter (members, mods, pending, banned, bouncing) |
+| `list_subgroups` | List all subgroups of a parent group, with member count and description |
 | `list_databases` | List all database tables in a group |
 | `describe_database` | Get column schema for a specific table |
 | `query_database` | Fetch all rows as structured records, auto-paginated |
@@ -16,6 +17,8 @@ An MCP server for Groups.io, enabling conversational querying of group info, mem
 The `query_database` tool returns every row as a plain object keyed by column name, making it easy to ask questions like *"who lives in Ohio?"* or *"find everyone whose membership expires this year"*.
 
 The `get_group` tool returns key group metadata — useful for confirming you're connected to the right group or checking plan and membership numbers.
+
+The `list_subgroups` tool lists every subgroup within a parent group, showing name, member count, and description for each. Pass `group_name` to target a specific parent group, or omit it to use the default group from `GROUPSIO_GROUP`. Subgroup names follow the `parentgroup+subgroup` convention used throughout the API.
 
 ## Prerequisites
 
@@ -68,6 +71,8 @@ Once connected, you can ask Claude things like:
 - *"How many members does this group have?"*
 - *"List the moderators of this group"*
 - *"Are there any pending members waiting for approval?"*
+- *"Does this group have any subgroups?"*
+- *"How many members are in each subgroup?"*
 - *"List the databases in my group"*
 - *"What columns does the Members database have?"*
 - *"Query the contacts database and find everyone in Ohio"*

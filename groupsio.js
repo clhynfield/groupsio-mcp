@@ -342,6 +342,25 @@ export function createToolHandlers(client, defaultGroup) {
     return textResult(`Members in "${group}" (${resolvedType}): ${body}`);
   }
 
+  async function listSubgroups({ group_name } = {}) {
+    const group = resolveGroup(group_name, defaultGroup);
+    const subgroups = await client.fetchAllPages("getsubgroups", {
+      group_name: group,
+    });
+
+    if (subgroups.length === 0) {
+      return textResult("No subgroups found.");
+    }
+
+    const lines = subgroups.map(
+      (s) =>
+        `- ${s.name} | ${s.subs_count} members` +
+        (s.plain_desc ? ` | ${s.plain_desc}` : ""),
+    );
+
+    return textResult(`Subgroups in "${group}":\n\n${lines.join("\n")}`);
+  }
+
   async function getSubscriptions({} = {}) {
     const subs = await client.fetchAllPages("getsubs", {});
 
@@ -363,6 +382,7 @@ export function createToolHandlers(client, defaultGroup) {
     queryDatabase,
     getGroup,
     getMembers,
+    listSubgroups,
     getSubscriptions,
   };
 }

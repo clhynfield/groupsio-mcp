@@ -908,6 +908,67 @@ describe("getMembers", () => {
 });
 
 // ---------------------------------------------------------------------------
+// listSubgroups
+// ---------------------------------------------------------------------------
+
+describe("listSubgroups", () => {
+  it("returns a formatted list of subgroups with name, member count, and description", async () => {
+    const client = fakeListClient([
+      { name: "alpha", subs_count: 42, plain_desc: "Alpha subgroup" },
+      { name: "beta", subs_count: 7, plain_desc: "" },
+    ]);
+    const { listSubgroups } = createToolHandlers(client, "parentgroup");
+
+    const result = await listSubgroups({ group_name: "parentgroup" });
+
+    const text = result.content[0].text;
+    expect(text).toContain("alpha");
+    expect(text).toContain("42");
+    expect(text).toContain("Alpha subgroup");
+    expect(text).toContain("beta");
+    expect(text).toContain("7");
+  });
+
+  it("calls fetchAllPages with getsubgroups and the resolved group_name", async () => {
+    const client = fakeListClient([]);
+    const { listSubgroups } = createToolHandlers(client, "default-group");
+
+    await listSubgroups({ group_name: "explicit-group" });
+
+    expect(client.fetchAllPages).toHaveBeenCalledWith("getsubgroups", {
+      group_name: "explicit-group",
+    });
+  });
+
+  it("falls back to defaultGroup when group_name is omitted", async () => {
+    const client = fakeListClient([]);
+    const { listSubgroups } = createToolHandlers(client, "my-default");
+
+    await listSubgroups({});
+
+    expect(client.fetchAllPages).toHaveBeenCalledWith("getsubgroups", {
+      group_name: "my-default",
+    });
+  });
+
+  it("returns a helpful message when there are no subgroups", async () => {
+    const client = fakeListClient([]);
+    const { listSubgroups } = createToolHandlers(client, "testgroup");
+
+    const result = await listSubgroups({ group_name: "testgroup" });
+
+    expect(result.content[0].text).toContain("No subgroups");
+  });
+
+  it("throws when neither group_name nor defaultGroup is available", async () => {
+    const client = fakeListClient([]);
+    const { listSubgroups } = createToolHandlers(client, undefined);
+
+    await expect(listSubgroups({})).rejects.toThrow("No group specified");
+  });
+});
+
+// ---------------------------------------------------------------------------
 // getSubscriptions
 // ---------------------------------------------------------------------------
 

@@ -73,3 +73,9 @@ The `group_name` parameter uses the Groups.io group identifier — typically the
 
 - The Groups.io API currently exposes two database endpoints: list tables and fetch rows. There is no server-side filtering, so `query_database` fetches all rows and lets the LLM reason over them in context.
 - The API is marked ALPHA by Groups.io and subject to change.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for XP practices, TDD workflow, and project conventions.
+
+AI agents (Copilot, Claude, etc.) should also read [AGENTS.md](AGENTS.md) for the ping-pong TDD subagent protocol used in this project.

@@ -196,6 +196,10 @@ Regardless of which phase you are in:
    phase requires.
 6. **Report test output.** Always include the relevant lines of `npm test`
    output in your response so the orchestrator can verify the outcome.
+7. **Keep `README.md` current.** If your change affects any user-facing
+   behaviour — tool names or descriptions, parameters, environment variables,
+   configuration, or usage examples — update `README.md` in the same change.
+   A feature that works but isn't documented hasn't fully shipped.
 
 ---
 
@@ -239,3 +243,4 @@ useful.
 - [ ] `npm test` is green after my changes
 - [ ] I have not introduced new dependencies or side-effects
 - [ ] I have included relevant test output in my response
+- [ ] `README.md` is updated if any user-facing behaviour changed

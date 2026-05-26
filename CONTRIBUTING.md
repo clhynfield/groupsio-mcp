@@ -107,6 +107,18 @@ suite before and after is the definition of a safe refactor.
 | **No mocking frameworks** | Inject fakes directly (plain functions / objects) |
 | **Assertions** | Vitest `expect` — prefer specific matchers over `toBeTruthy` |
 
+### Keeping the README current
+
+`README.md` is the first thing a new user or integrator reads. Update it in
+the same PR as any change that affects:
+
+- The available tools (names, descriptions, parameters)
+- Environment variables or configuration
+- Installation or setup steps
+- Usage examples or behavioural defaults
+
+A feature that works but isn't documented hasn't fully shipped.
+
 ### What a good PR looks like
 
 - Title is a single, present-tense sentence describing the customer-visible
@@ -115,6 +127,7 @@ suite before and after is the definition of a safe refactor.
 - The diff is small enough to review in one sitting (aim for < 200 lines
   changed).
 - All new behaviour is covered by new tests; all existing tests still pass.
+- `README.md` is updated if any user-facing behaviour changed.
 - No unrelated changes bundled in.
 
 ---

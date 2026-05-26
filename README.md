@@ -1,16 +1,19 @@
 # groupsio-mcp
 
-An MCP server for Groups.io, focused on conversational querying of group databases (member contact lists, directories, etc.).
+An MCP server for Groups.io, enabling conversational querying of group info, members, and databases (contact lists, directories, etc.).
 
 ## Tools
 
 | Tool | Description |
 |---|---|
+| `get_group` | Get settings and info for a group (name, plan, member count, description) |
 | `list_databases` | List all database tables in a group |
 | `describe_database` | Get column schema for a specific table |
 | `query_database` | Fetch all rows as structured records, auto-paginated |
 
 The `query_database` tool returns every row as a plain object keyed by column name, making it easy to ask questions like *"who lives in Ohio?"* or *"find everyone whose membership expires this year"*.
+
+The `get_group` tool returns key group metadata — useful for confirming you're connected to the right group or checking plan and membership numbers.
 
 ## Prerequisites
 
@@ -57,6 +60,8 @@ After editing, restart Claude Desktop.
 
 Once connected, you can ask Claude things like:
 
+- *"What group am I connected to?"*
+- *"How many members does this group have?"*
 - *"List the databases in my group"*
 - *"What columns does the Members database have?"*
 - *"Query the contacts database and find everyone in Ohio"*

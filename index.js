@@ -38,6 +38,23 @@ const server = new McpServer({
   version: "1.0.0",
 });
 
+// --- get_group -------------------------------------------------------------
+
+server.tool(
+  "get_group",
+  "Get settings and info for a Groups.io group: name, plan, member count, email address, and description.",
+  {
+    group_name: z
+      .string()
+      .optional()
+      .describe(
+        `Name of the Groups.io group (e.g. "mygroup" or "mygroup+subgroup"). ` +
+          `Defaults to GROUPSIO_GROUP env var if set.`,
+      ),
+  },
+  handlers.getGroup,
+);
+
 // --- list_databases ---------------------------------------------------------
 
 server.tool(

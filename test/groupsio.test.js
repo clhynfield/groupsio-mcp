@@ -71,18 +71,18 @@ describe("resolveGroup", () => {
 
 describe("rowsToRecords", () => {
   const columns = [
-    { id: 1, name: "Name" },
-    { id: 2, name: "Email" },
-    { id: 3, name: "State" },
+    { id: 1, name: "Name", type: "text_column" },
+    { id: 2, name: "Email", type: "text_column" },
+    { id: 3, name: "State", type: "text_column" },
   ];
 
   it("converts raw rows into objects keyed by column name", () => {
     const rows = [
       {
         id: 100,
-        values: [
-          { column_id: 1, value: "Alice" },
-          { column_id: 2, value: "alice@example.com" },
+        vals: [
+          { col_id: 1, col_type: "text_column", text: "Alice" },
+          { col_id: 2, col_type: "text_column", text: "alice@example.com" },
         ],
       },
     ];
@@ -95,22 +95,33 @@ describe("rowsToRecords", () => {
   });
 
   it("includes _row_id from the row's id field", () => {
-    const rows = [{ id: 42, values: [] }];
+    const rows = [{ id: 42, vals: [] }];
     expect(rowsToRecords(rows, columns)[0]._row_id).toBe(42);
   });
 
-  it("handles rows with empty values array", () => {
-    const rows = [{ id: 1, values: [] }];
+  it("handles rows with empty vals array", () => {
+    const rows = [{ id: 1, vals: [] }];
     expect(rowsToRecords(rows, columns)).toEqual([{ _row_id: 1 }]);
   });
 
-  it("handles rows where values is undefined (missing key)", () => {
+  it("handles rows where vals is undefined (missing key)", () => {
     const rows = [{ id: 1 }];
     expect(rowsToRecords(rows, columns)).toEqual([{ _row_id: 1 }]);
   });
 
+  it("omits fields whose value is null/empty", () => {
+    const rows = [{ id: 1, vals: [{ col_id: 1, col_type: "text_column" }] }];
+    // text is absent → null → should be omitted from the record
+    expect(rowsToRecords(rows, columns)[0]).not.toHaveProperty("Name");
+  });
+
   it("uses col_<id> fallback for unrecognized column IDs", () => {
-    const rows = [{ id: 1, values: [{ column_id: 999, value: "mystery" }] }];
+    const rows = [
+      {
+        id: 1,
+        vals: [{ col_id: 999, col_type: "text_column", text: "mystery" }],
+      },
+    ];
 
     expect(rowsToRecords(rows, columns)[0]).toHaveProperty(
       "col_999",
@@ -120,8 +131,8 @@ describe("rowsToRecords", () => {
 
   it("handles multiple rows", () => {
     const rows = [
-      { id: 1, values: [{ column_id: 1, value: "Alice" }] },
-      { id: 2, values: [{ column_id: 1, value: "Bob" }] },
+      { id: 1, vals: [{ col_id: 1, col_type: "text_column", text: "Alice" }] },
+      { id: 2, vals: [{ col_id: 1, col_type: "text_column", text: "Bob" }] },
     ];
 
     const records = rowsToRecords(rows, columns);
@@ -133,6 +144,88 @@ describe("rowsToRecords", () => {
 
   it("returns an empty array for empty input", () => {
     expect(rowsToRecords([], columns)).toEqual([]);
+  });
+
+  it("formats address_column as a readable string", () => {
+    const cols = [{ id: 7, name: "Address", type: "address_column" }];
+    const rows = [
+      {
+        id: 1,
+        vals: [
+          {
+            col_id: 7,
+            col_type: "address_column",
+            street_address1: "123 Main St",
+            city: "Springfield",
+            state: "OH",
+            zip: "45001",
+            country: "United States",
+          },
+        ],
+      },
+    ];
+    expect(rowsToRecords(rows, cols)[0].Address).toBe(
+      "123 Main St, Springfield, OH 45001, United States",
+    );
+  });
+
+  it("resolves multi_choice_column indices to label strings (1-based)", () => {
+    const cols = [
+      {
+        id: 12,
+        name: "Co-op",
+        type: "multi_choice_column",
+        choices: ["Alpha", "Beta", "Gamma"],
+      },
+    ];
+    const rows = [
+      {
+        id: 1,
+        vals: [
+          { col_id: 12, col_type: "multi_choice_column", multi_choice: [1, 3] },
+        ],
+      },
+    ];
+    expect(rowsToRecords(rows, cols)[0]["Co-op"]).toEqual(["Alpha", "Gamma"]);
+  });
+
+  it("resolves multiple_choice_column index to a single label string (1-based)", () => {
+    const cols = [
+      {
+        id: 13,
+        name: "Membership Type",
+        type: "multiple_choice_column",
+        choices: ["Alumni", "Legacy", "Regular"],
+      },
+    ];
+    const rows = [
+      {
+        id: 1,
+        vals: [
+          { col_id: 13, col_type: "multiple_choice_column", multi_choice: [3] },
+        ],
+      },
+    ];
+    expect(rowsToRecords(rows, cols)[0]["Membership Type"]).toBe("Regular");
+  });
+
+  it("includes checkbox_column values (true and false)", () => {
+    const cols = [
+      { id: 18, name: "Verified", type: "checkbox_column" },
+      { id: 19, name: "Lapsed", type: "checkbox_column" },
+    ];
+    const rows = [
+      {
+        id: 1,
+        vals: [
+          { col_id: 18, col_type: "checkbox_column", checked: true },
+          { col_id: 19, col_type: "checkbox_column", checked: false },
+        ],
+      },
+    ];
+    const record = rowsToRecords(rows, cols)[0];
+    expect(record.Verified).toBe(true);
+    expect(record.Lapsed).toBe(false);
   });
 });
 
@@ -504,9 +597,9 @@ describe("queryDatabase", () => {
           data: [
             {
               id: 100,
-              values: [
-                { column_id: 1, value: "Alice" },
-                { column_id: 2, value: "OH" },
+              vals: [
+                { col_id: 1, col_type: "text_column", text: "Alice" },
+                { col_id: 2, col_type: "text_column", text: "OH" },
               ],
             },
           ],
@@ -549,12 +642,22 @@ describe("queryDatabase", () => {
       tables,
       rowPages: [
         {
-          data: [{ id: 1, values: [{ column_id: 1, value: "Alice" }] }],
+          data: [
+            {
+              id: 1,
+              vals: [{ col_id: 1, col_type: "text_column", text: "Alice" }],
+            },
+          ],
           has_more: true,
           next_page_token: 55,
         },
         {
-          data: [{ id: 2, values: [{ column_id: 1, value: "Bob" }] }],
+          data: [
+            {
+              id: 2,
+              vals: [{ col_id: 1, col_type: "text_column", text: "Bob" }],
+            },
+          ],
           has_more: false,
         },
       ],
@@ -580,8 +683,8 @@ describe("queryDatabase", () => {
       rowPages: [
         {
           data: [
-            { id: 1, values: [] },
-            { id: 2, values: [] },
+            { id: 1, vals: [] },
+            { id: 2, vals: [] },
           ],
           has_more: true,
           next_page_token: 10,

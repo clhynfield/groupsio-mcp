@@ -23,22 +23,81 @@ export function resolveGroup(groupName, defaultGroup) {
 }
 
 /**
+ * Extract a human-readable value from a single `vals` entry.
+ * The API stores values in type-specific fields, not a generic `value` field.
+ */
+function extractValue(val, col) {
+  switch (val.col_type) {
+    case "text_column":
+    case "paragraph_column":
+      return val.text ?? null;
+
+    case "address_column": {
+      const stateZip =
+        val.state && val.zip
+          ? `${val.state} ${val.zip}`
+          : val.state || val.zip || null;
+      const parts = [
+        val.street_address1,
+        val.city,
+        stateZip,
+        val.country,
+      ].filter(Boolean);
+      return parts.length > 0 ? parts.join(", ") : null;
+    }
+
+    case "multi_choice_column": {
+      // multi_choice holds an array of 1-based indices into col.choices
+      const indices = val.multi_choice;
+      if (!indices || indices.length === 0) return null;
+      if (col?.choices) {
+        return indices.map((i) => col.choices[i - 1]).filter(Boolean);
+      }
+      return indices;
+    }
+
+    case "multiple_choice_column": {
+      // Same encoding as multi_choice_column but semantically single-select
+      const indices = val.multi_choice;
+      if (!indices || indices.length === 0) return null;
+      if (col?.choices) {
+        return col.choices[indices[0] - 1] ?? null;
+      }
+      return indices[0];
+    }
+
+    case "checkbox_column":
+      return val.checked ?? null;
+
+    default:
+      return val.text ?? null;
+  }
+}
+
+/**
  * Convert raw DatabaseRow array + column definitions into plain objects
  * keyed by column name — much easier for an LLM to reason over.
  *
- * Input rows look like:
- *   { id: 123, values: [ { column_id: 7, value: "Alice" }, ... ] }
+ * The API returns rows like:
+ *   { id: 123, vals: [ { col_id: 1, col_type: "text_column", text: "Alice" }, ... ] }
  *
  * Output:
  *   [ { _row_id: 123, Name: "Alice", Email: "alice@example.com", ... }, ... ]
+ *
+ * Null/empty values are omitted to keep output compact.
  */
 export function rowsToRecords(rows, columns) {
-  const colById = Object.fromEntries(columns.map((c) => [c.id, c.name]));
+  // Map by id to the full column object so extractValue can access choices
+  const colById = Object.fromEntries(columns.map((c) => [c.id, c]));
   return rows.map((row) => {
     const record = { _row_id: row.id };
-    for (const val of row.values ?? []) {
-      const colName = colById[val.column_id] ?? `col_${val.column_id}`;
-      record[colName] = val.value;
+    for (const val of row.vals ?? []) {
+      const col = colById[val.col_id];
+      const colName = col?.name ?? `col_${val.col_id}`;
+      const extracted = extractValue(val, col);
+      if (extracted !== null) {
+        record[colName] = extracted;
+      }
     }
     return record;
   });

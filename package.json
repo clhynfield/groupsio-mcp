@@ -5,8 +5,9 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "test": "vitest run test/groupsio.test.js",
+    "test:watch": "vitest test/groupsio.test.js",
+    "test:integration": "op run --env-file .envrc -- vitest run test/integration.test.js"
   },
   "keywords": [],
   "author": "",

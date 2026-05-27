@@ -141,10 +141,36 @@ A feature that works but isn't documented hasn't fully shipped.
 
 ## Running the tests
 
+### Unit tests (no credentials required)
+
 ```bash
 npm test            # single run
 npm run test:watch  # re-run on every file save
 ```
 
-All tests live in `test/groupsio.test.js`. They use plain dependency injection
-— no network calls, no environment variables required.
+Unit tests live in `test/groupsio.test.js`. They use plain dependency
+injection — no network calls, no environment variables required.
+
+### Integration tests (live API)
+
+```bash
+npm run test:integration
+```
+
+Integration tests live in `test/integration.test.js` and exercise the real
+Groups.io API. They are skipped automatically when credentials are absent, so
+`npm test` always works without them.
+
+To run integration tests, create a `.envrc` in the project root (it is
+gitignored) with the following variables:
+
+```bash
+export GROUPSIO_API_KEY="..."        # your Groups.io API token
+export GROUPSIO_GROUP="mygroup"      # group name to test against
+export GROUPSIO_TEST_QUERY="word"    # a word you know appears in that group's archive
+```
+
+The `npm run test:integration` script passes these through `op run` so the API
+key can be stored in 1Password (`op://Vault/Item/field`). If you store it
+plainly instead, replace the `op run` wrapper in `package.json` with a direct
+`vitest run` call.

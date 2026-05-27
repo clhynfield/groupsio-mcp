@@ -1233,8 +1233,8 @@ describe("getMessage", () => {
     const client = fakePageClient({
       msg_num: 42,
       subject: "Hello world",
-      from: "Alice Smith <alice@example.com>",
-      date: "2024-03-10T14:22:00Z",
+      name: "Alice Smith",
+      created: "2024-03-10T14:22:00Z",
     });
     const { getMessage } = createToolHandlers(client, "testgroup");
 
@@ -1243,7 +1243,7 @@ describe("getMessage", () => {
     const text = result.content[0].text;
     expect(text).toContain('Message #42 in "testgroup"');
     expect(text).toContain("Subject: Hello world");
-    expect(text).toContain("From: Alice Smith <alice@example.com>");
+    expect(text).toContain("From: Alice Smith");
     expect(text).toContain("Date: 2024-03-10");
   });
 
@@ -1251,8 +1251,8 @@ describe("getMessage", () => {
     const client = fakePageClient({
       msg_num: 7,
       subject: "Test",
-      from: "Bob <bob@example.com>",
-      date: "2024-05-01T00:00:00Z",
+      name: "Bob",
+      created: "2024-05-01T00:00:00Z",
     });
     const { getMessage } = createToolHandlers(client, "default-group");
 
@@ -1269,8 +1269,8 @@ describe("getMessage", () => {
     const client = fakePageClient({
       msg_num: 5,
       subject: "Fallback test",
-      from: "Carol <carol@example.com>",
-      date: "2024-06-15T08:30:00Z",
+      name: "Carol",
+      created: "2024-06-15T08:30:00Z",
     });
     const { getMessage } = createToolHandlers(client, "my-default");
 
@@ -1286,8 +1286,8 @@ describe("getMessage", () => {
     const client = fakePageClient({
       msg_num: 10,
       subject: "With body",
-      from: "Dave <dave@example.com>",
-      date: "2024-07-20T12:00:00Z",
+      name: "Dave",
+      created: "2024-07-20T12:00:00Z",
       body: "This is the plain text body of the message.",
     });
     const { getMessage } = createToolHandlers(client, "testgroup");
@@ -1307,8 +1307,8 @@ describe("getMessage", () => {
     const client = fakePageClient({
       msg_num: 11,
       subject: "No body",
-      from: "Eve <eve@example.com>",
-      date: "2024-08-01T10:00:00Z",
+      name: "Eve",
+      created: "2024-08-01T10:00:00Z",
     });
     const { getMessage } = createToolHandlers(client, "testgroup");
 
@@ -1321,8 +1321,8 @@ describe("getMessage", () => {
     const client = fakePageClient({
       msg_num: 20,
       subject: "Date truncation",
-      from: "Frank <frank@example.com>",
-      date: "2024-11-30T23:59:59Z",
+      name: "Frank",
+      created: "2024-11-30T23:59:59Z",
     });
     const { getMessage } = createToolHandlers(client, "testgroup");
 
@@ -1344,8 +1344,8 @@ describe("getMessage", () => {
     const client = fakePageClient({
       msg_num: 1,
       subject: "x",
-      from: "x",
-      date: "2024-01-01T00:00:00Z",
+      name: "x",
+      created: "2024-01-01T00:00:00Z",
     });
     const { getMessage } = createToolHandlers(client, undefined);
 
@@ -1407,14 +1407,14 @@ describe("searchArchives", () => {
         {
           msg_num: 201,
           subject: "Annual meeting",
-          from: "Alice <alice@example.com>",
-          date: "2024-04-01T09:00:00Z",
+          name: "Alice",
+          created: "2024-04-01T09:00:00Z",
         },
         {
           msg_num: 202,
           subject: "Re: Annual meeting",
-          from: "Bob <bob@example.com>",
-          date: "2024-04-02T11:30:00Z",
+          name: "Bob",
+          created: "2024-04-02T11:30:00Z",
         },
       ],
       has_more: false,
@@ -1425,8 +1425,8 @@ describe("searchArchives", () => {
 
     const text = result.content[0].text;
     expect(text).toContain('Search results for "annual" in "testgroup" (2 found):');
-    expect(text).toContain("[201] Annual meeting | from: Alice <alice@example.com> | 2024-04-01");
-    expect(text).toContain("[202] Re: Annual meeting | from: Bob <bob@example.com> | 2024-04-02");
+    expect(text).toContain("[201] Annual meeting | from: Alice | 2024-04-01");
+    expect(text).toContain("[202] Re: Annual meeting | from: Bob | 2024-04-02");
   });
 
   it("returns a no-results message when data is empty", async () => {
@@ -1488,14 +1488,14 @@ describe("getMessages", () => {
         {
           msg_num: 101,
           subject: "Welcome to the group",
-          from: "Alice Smith <alice@example.com>",
-          date: "2024-03-10T14:22:00Z",
+          name: "Alice Smith",
+          created: "2024-03-10T14:22:00Z",
         },
         {
           msg_num: 102,
           subject: "Re: Welcome to the group",
-          from: "Bob Jones <bob@example.com>",
-          date: "2024-03-11T09:00:00Z",
+          name: "Bob Jones",
+          created: "2024-03-11T09:00:00Z",
         },
       ],
       has_more: false,
@@ -1505,8 +1505,8 @@ describe("getMessages", () => {
     const result = await getMessages({});
 
     const text = result.content[0].text;
-    expect(text).toContain("[101] Welcome to the group | from: Alice Smith <alice@example.com> | 2024-03-10");
-    expect(text).toContain("[102] Re: Welcome to the group | from: Bob Jones <bob@example.com> | 2024-03-11");
+    expect(text).toContain("[101] Welcome to the group | from: Alice Smith | 2024-03-10");
+    expect(text).toContain("[102] Re: Welcome to the group | from: Bob Jones | 2024-03-11");
   });
 
   it("calls apiGet with getmessages, the resolved group_name, and the default limit of 20", async () => {
@@ -1612,14 +1612,14 @@ describe("getTopicMessages", () => {
         {
           msg_num: 301,
           subject: "First post",
-          from: "Alice <alice@example.com>",
-          date: "2024-06-01T10:00:00Z",
+          name: "Alice",
+          created: "2024-06-01T10:00:00Z",
         },
         {
           msg_num: 302,
           subject: "Re: First post",
-          from: "Bob <bob@example.com>",
-          date: "2024-06-02T15:30:00Z",
+          name: "Bob",
+          created: "2024-06-02T15:30:00Z",
         },
       ],
       has_more: false,
@@ -1630,8 +1630,8 @@ describe("getTopicMessages", () => {
 
     const text = result.content[0].text;
     expect(text).toContain("Messages in topic 77 (2 found):");
-    expect(text).toContain("[301] First post | from: Alice <alice@example.com> | 2024-06-01");
-    expect(text).toContain("[302] Re: First post | from: Bob <bob@example.com> | 2024-06-02");
+    expect(text).toContain("[301] First post | from: Alice | 2024-06-01");
+    expect(text).toContain("[302] Re: First post | from: Bob | 2024-06-02");
   });
 
   it("returns a no-messages message when data is empty", async () => {

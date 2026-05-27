@@ -74,7 +74,7 @@ function clampLimit(limit) {
  * shared by getMessages, getTopicMessages, and searchArchives.
  */
 function formatMessageLine(m) {
-  return `[${m.msg_num}] ${m.subject} | from: ${m.from} | ${m.date.split("T")[0]}`;
+  return `[${m.msg_num}] ${m.subject} | from: ${m.name} | ${m.created.split("T")[0]}`;
 }
 
 /**
@@ -208,7 +208,7 @@ export function createApiClient({
    */
   async function fetchAllPages(endpoint, params = {}) {
     const items = [];
-    let pageToken = undefined;
+    let pageToken;
 
     while (true) {
       const page = await apiGet(endpoint, {
@@ -326,7 +326,7 @@ export function createToolHandlers(client, defaultGroup) {
 
     // Fetch rows, respecting max_rows cap
     const allRows = [];
-    let pageToken = undefined;
+    let pageToken;
     let truncated = false;
 
     while (true) {
@@ -442,8 +442,8 @@ export function createToolHandlers(client, defaultGroup) {
     const lines = [
       `Message #${m.msg_num} in "${group}"`,
       `Subject: ${m.subject}`,
-      `From: ${m.from}`,
-      `Date: ${m.date.split("T")[0]}`,
+      `From: ${m.name}`,
+      `Date: ${m.created.split("T")[0]}`,
     ];
 
     if (m.body) {

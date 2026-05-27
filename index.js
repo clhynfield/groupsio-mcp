@@ -106,6 +106,26 @@ server.tool(
   handlers.getSubscriptions,
 );
 
+// --- get_message ------------------------------------------------------------
+
+server.tool(
+  "get_message",
+  "Fetch a single message from a Groups.io group's archive by message number, returning subject, sender, date, and body.",
+  {
+    group_name: z
+      .string()
+      .optional()
+      .describe(
+        `Name of the Groups.io group (e.g. "mygroup" or "mygroup+subgroup"). ` +
+          `Defaults to GROUPSIO_GROUP env var if set.`,
+      ),
+    msg_num: z
+      .number()
+      .describe("The message number to fetch. Visible in get_messages output."),
+  },
+  handlers.getMessage,
+);
+
 // --- get_messages -----------------------------------------------------------
 
 server.tool(

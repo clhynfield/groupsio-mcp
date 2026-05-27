@@ -376,6 +376,28 @@ export function createToolHandlers(client, defaultGroup) {
     return textResult(`Subscribed groups: ${subs.length}\n${lines.join("\n")}`);
   }
 
+  async function getMessage({ group_name, msg_num } = {}) {
+    if (!msg_num) {
+      throw new Error("msg_num is required.");
+    }
+    const group = resolveGroup(group_name, defaultGroup);
+    const m = await client.apiGet("getmessage", { group_name: group, msg_num });
+
+    const lines = [
+      `Message #${m.msg_num} in "${group}"`,
+      `Subject: ${m.subject}`,
+      `From: ${m.from}`,
+      `Date: ${m.date.split("T")[0]}`,
+    ];
+
+    if (m.body) {
+      lines.push("---");
+      lines.push(m.body);
+    }
+
+    return textResult(lines.join("\n"));
+  }
+
   async function getMessages({ group_name, limit = 20 } = {}) {
     const group = resolveGroup(group_name, defaultGroup);
     const page = await client.apiGet("getmessages", {
@@ -434,6 +456,7 @@ export function createToolHandlers(client, defaultGroup) {
     getMembers,
     listSubgroups,
     getSubscriptions,
+    getMessage,
     getMessages,
     listTopics,
   };

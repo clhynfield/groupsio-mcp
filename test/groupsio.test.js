@@ -1201,6 +1201,135 @@ describe("listTopics", () => {
 });
 
 // ---------------------------------------------------------------------------
+// getMessage
+// ---------------------------------------------------------------------------
+
+describe("getMessage", () => {
+  it("returns formatted header lines for a basic message", async () => {
+    const client = fakePageClient({
+      msg_num: 42,
+      subject: "Hello world",
+      from: "Alice Smith <alice@example.com>",
+      date: "2024-03-10T14:22:00Z",
+    });
+    const { getMessage } = createToolHandlers(client, "testgroup");
+
+    const result = await getMessage({ msg_num: 42 });
+
+    const text = result.content[0].text;
+    expect(text).toContain('Message #42 in "testgroup"');
+    expect(text).toContain("Subject: Hello world");
+    expect(text).toContain("From: Alice Smith <alice@example.com>");
+    expect(text).toContain("Date: 2024-03-10");
+  });
+
+  it("calls apiGet with getmessage, the resolved group_name, and msg_num", async () => {
+    const client = fakePageClient({
+      msg_num: 7,
+      subject: "Test",
+      from: "Bob <bob@example.com>",
+      date: "2024-05-01T00:00:00Z",
+    });
+    const { getMessage } = createToolHandlers(client, "default-group");
+
+    await getMessage({ group_name: "explicit-group", msg_num: 7 });
+
+    expect(client.apiGetCalls).toHaveLength(1);
+    expect(client.apiGetCalls[0]).toEqual([
+      "getmessage",
+      { group_name: "explicit-group", msg_num: 7 },
+    ]);
+  });
+
+  it("falls back to the default group when group_name is omitted", async () => {
+    const client = fakePageClient({
+      msg_num: 5,
+      subject: "Fallback test",
+      from: "Carol <carol@example.com>",
+      date: "2024-06-15T08:30:00Z",
+    });
+    const { getMessage } = createToolHandlers(client, "my-default");
+
+    await getMessage({ msg_num: 5 });
+
+    expect(client.apiGetCalls[0]).toEqual([
+      "getmessage",
+      { group_name: "my-default", msg_num: 5 },
+    ]);
+  });
+
+  it("appends body after a --- separator when the message has a body field", async () => {
+    const client = fakePageClient({
+      msg_num: 10,
+      subject: "With body",
+      from: "Dave <dave@example.com>",
+      date: "2024-07-20T12:00:00Z",
+      body: "This is the plain text body of the message.",
+    });
+    const { getMessage } = createToolHandlers(client, "testgroup");
+
+    const result = await getMessage({ msg_num: 10 });
+
+    const text = result.content[0].text;
+    expect(text).toContain("---");
+    expect(text).toContain("This is the plain text body of the message.");
+    // Body should appear after the separator
+    const separatorIndex = text.indexOf("---");
+    const bodyIndex = text.indexOf("This is the plain text body");
+    expect(bodyIndex).toBeGreaterThan(separatorIndex);
+  });
+
+  it("does not include --- or body when the message has no body field", async () => {
+    const client = fakePageClient({
+      msg_num: 11,
+      subject: "No body",
+      from: "Eve <eve@example.com>",
+      date: "2024-08-01T10:00:00Z",
+    });
+    const { getMessage } = createToolHandlers(client, "testgroup");
+
+    const result = await getMessage({ msg_num: 11 });
+
+    expect(result.content[0].text).not.toContain("---");
+  });
+
+  it("truncates the date to YYYY-MM-DD before the T", async () => {
+    const client = fakePageClient({
+      msg_num: 20,
+      subject: "Date truncation",
+      from: "Frank <frank@example.com>",
+      date: "2024-11-30T23:59:59Z",
+    });
+    const { getMessage } = createToolHandlers(client, "testgroup");
+
+    const result = await getMessage({ msg_num: 20 });
+
+    const text = result.content[0].text;
+    expect(text).toContain("Date: 2024-11-30");
+    expect(text).not.toContain("T23:59:59Z");
+  });
+
+  it("throws when msg_num is missing", async () => {
+    const client = fakePageClient({});
+    const { getMessage } = createToolHandlers(client, "testgroup");
+
+    await expect(getMessage({})).rejects.toThrow(/msg_num/);
+  });
+
+  it("throws when neither group_name nor defaultGroup is available", async () => {
+    const client = fakePageClient({
+      msg_num: 1,
+      subject: "x",
+      from: "x",
+      date: "2024-01-01T00:00:00Z",
+    });
+    const { getMessage } = createToolHandlers(client, undefined);
+
+    await expect(getMessage({ msg_num: 1 })).rejects.toThrow("No group specified");
+  });
+});
+
+// ---------------------------------------------------------------------------
 // getMessages
 // ---------------------------------------------------------------------------
 

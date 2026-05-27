@@ -376,6 +376,27 @@ export function createToolHandlers(client, defaultGroup) {
     return textResult(`Subscribed groups: ${subs.length}\n${lines.join("\n")}`);
   }
 
+  async function getMessages({ group_name, limit = 20 } = {}) {
+    const group = resolveGroup(group_name, defaultGroup);
+    const page = await client.apiGet("getmessages", {
+      group_name: group,
+      limit: Math.min(limit, 100),
+    });
+
+    const messages = page.data ?? [];
+
+    if (messages.length === 0) {
+      return textResult("No messages found in this group.");
+    }
+
+    const lines = messages.map(
+      (m) =>
+        `[${m.msg_num}] ${m.subject} | from: ${m.from} | ${m.date.split("T")[0]}`,
+    );
+
+    return textResult(lines.join("\n"));
+  }
+
   async function listTopics({ group_name, limit = 20 } = {}) {
     const group = resolveGroup(group_name, defaultGroup);
     const page = await client.apiGet("gettopics", {
@@ -413,6 +434,7 @@ export function createToolHandlers(client, defaultGroup) {
     getMembers,
     listSubgroups,
     getSubscriptions,
+    getMessages,
     listTopics,
   };
 }

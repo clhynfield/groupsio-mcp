@@ -106,6 +106,28 @@ server.tool(
   handlers.getSubscriptions,
 );
 
+// --- get_messages -----------------------------------------------------------
+
+server.tool(
+  "get_messages",
+  "List recent messages in a Groups.io group's archive, showing message number, subject, sender, and date.",
+  {
+    group_name: z
+      .string()
+      .optional()
+      .describe(
+        `Name of the Groups.io group (e.g. "mygroup" or "mygroup+subgroup"). ` +
+          `Defaults to GROUPSIO_GROUP env var if set.`,
+      ),
+    limit: z
+      .number()
+      .optional()
+      .default(20)
+      .describe("Number of messages to return (1–100). Defaults to 20."),
+  },
+  handlers.getMessages,
+);
+
 // --- list_databases ---------------------------------------------------------
 
 server.tool(

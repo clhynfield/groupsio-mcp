@@ -41,6 +41,20 @@ function fakeListClient(items) {
   };
 }
 
+/** Builds a fake client whose apiGet resolves with the given page body.
+ *  All calls are recorded in `apiGetCalls` for assertion without vi.fn(). */
+function fakePageClient(pageBody) {
+  const apiGetCalls = [];
+  return {
+    fetchAllPages: async () => [],
+    apiGet: async (...args) => {
+      apiGetCalls.push(args);
+      return pageBody;
+    },
+    apiGetCalls,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // resolveGroup
 // ---------------------------------------------------------------------------
@@ -1083,22 +1097,8 @@ describe("getSubscriptions", () => {
 // ---------------------------------------------------------------------------
 
 describe("listTopics", () => {
-  /** Fake client whose apiGet resolves with the given gettopics page body.
-   *  All calls are captured in `apiGetCalls` for assertion without vi.fn(). */
-  function fakeTopicsClient(pageBody) {
-    const apiGetCalls = [];
-    return {
-      fetchAllPages: async () => [],
-      apiGet: async (...args) => {
-        apiGetCalls.push(args);
-        return pageBody;
-      },
-      apiGetCalls,
-    };
-  }
-
   it("returns a formatted list of topics with id, subject, message count, and date", async () => {
-    const client = fakeTopicsClient({
+    const client = fakePageClient({
       data: [
         {
           id: 1001,
@@ -1126,7 +1126,7 @@ describe("listTopics", () => {
   });
 
   it("calls apiGet with gettopics and the resolved group_name", async () => {
-    const client = fakeTopicsClient({ data: [], has_more: false });
+    const client = fakePageClient({ data: [], has_more: false });
     const { listTopics } = createToolHandlers(client, "default-group");
 
     await listTopics({ group_name: "explicit-group" });
@@ -1139,7 +1139,7 @@ describe("listTopics", () => {
   });
 
   it("falls back to the default group when group_name is omitted", async () => {
-    const client = fakeTopicsClient({ data: [], has_more: false });
+    const client = fakePageClient({ data: [], has_more: false });
     const { listTopics } = createToolHandlers(client, "my-default");
 
     await listTopics({});
@@ -1152,7 +1152,7 @@ describe("listTopics", () => {
   });
 
   it("passes limit=50 to the API when requested", async () => {
-    const client = fakeTopicsClient({ data: [], has_more: false });
+    const client = fakePageClient({ data: [], has_more: false });
     const { listTopics } = createToolHandlers(client, "g");
 
     await listTopics({ limit: 50 });
@@ -1161,7 +1161,7 @@ describe("listTopics", () => {
   });
 
   it("caps the limit at 100 when a value above 100 is requested", async () => {
-    const client = fakeTopicsClient({ data: [], has_more: false });
+    const client = fakePageClient({ data: [], has_more: false });
     const { listTopics } = createToolHandlers(client, "g");
 
     await listTopics({ limit: 200 });
@@ -1170,7 +1170,7 @@ describe("listTopics", () => {
   });
 
   it("returns a helpful message when there are no topics", async () => {
-    const client = fakeTopicsClient({ data: [], has_more: false });
+    const client = fakePageClient({ data: [], has_more: false });
     const { listTopics } = createToolHandlers(client, "testgroup");
 
     const result = await listTopics({});
@@ -1179,7 +1179,7 @@ describe("listTopics", () => {
   });
 
   it("handles topics missing optional fields gracefully", async () => {
-    const client = fakeTopicsClient({
+    const client = fakePageClient({
       data: [{ id: 99, subject: "Bare topic" }],
       has_more: false,
     });
@@ -1193,9 +1193,102 @@ describe("listTopics", () => {
   });
 
   it("throws when no group is available", async () => {
-    const client = fakeTopicsClient({ data: [], has_more: false });
+    const client = fakePageClient({ data: [], has_more: false });
     const { listTopics } = createToolHandlers(client, undefined);
 
     await expect(listTopics({})).rejects.toThrow("No group specified");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getMessages
+// ---------------------------------------------------------------------------
+
+describe("getMessages", () => {
+  it("returns a formatted list of messages with msg_num, subject, from, and date", async () => {
+    const client = fakePageClient({
+      data: [
+        {
+          msg_num: 101,
+          subject: "Welcome to the group",
+          from: "Alice Smith <alice@example.com>",
+          date: "2024-03-10T14:22:00Z",
+        },
+        {
+          msg_num: 102,
+          subject: "Re: Welcome to the group",
+          from: "Bob Jones <bob@example.com>",
+          date: "2024-03-11T09:00:00Z",
+        },
+      ],
+      has_more: false,
+    });
+    const { getMessages } = createToolHandlers(client, "testgroup");
+
+    const result = await getMessages({});
+
+    const text = result.content[0].text;
+    expect(text).toContain("[101] Welcome to the group | from: Alice Smith <alice@example.com> | 2024-03-10");
+    expect(text).toContain("[102] Re: Welcome to the group | from: Bob Jones <bob@example.com> | 2024-03-11");
+  });
+
+  it("calls apiGet with getmessages, the resolved group_name, and the default limit of 20", async () => {
+    const client = fakePageClient({ data: [], has_more: false });
+    const { getMessages } = createToolHandlers(client, "default-group");
+
+    await getMessages({ group_name: "explicit-group" });
+
+    expect(client.apiGetCalls).toHaveLength(1);
+    expect(client.apiGetCalls[0]).toEqual([
+      "getmessages",
+      { group_name: "explicit-group", limit: 20 },
+    ]);
+  });
+
+  it("falls back to the default group when group_name is omitted", async () => {
+    const client = fakePageClient({ data: [], has_more: false });
+    const { getMessages } = createToolHandlers(client, "my-default");
+
+    await getMessages({});
+
+    expect(client.apiGetCalls).toHaveLength(1);
+    expect(client.apiGetCalls[0]).toEqual([
+      "getmessages",
+      { group_name: "my-default", limit: 20 },
+    ]);
+  });
+
+  it("passes the requested limit to the API", async () => {
+    const client = fakePageClient({ data: [], has_more: false });
+    const { getMessages } = createToolHandlers(client, "g");
+
+    await getMessages({ limit: 50 });
+
+    expect(client.apiGetCalls[0][1].limit).toBe(50);
+  });
+
+  it("caps the limit at 100 when a value above 100 is requested", async () => {
+    const client = fakePageClient({ data: [], has_more: false });
+    const { getMessages } = createToolHandlers(client, "g");
+
+    await getMessages({ limit: 250 });
+
+    expect(client.apiGetCalls[0][1].limit).toBe(100);
+  });
+
+  it("returns a helpful message when there are no messages", async () => {
+    const client = fakePageClient({ data: [], has_more: false });
+    const { getMessages } = createToolHandlers(client, "testgroup");
+
+    const result = await getMessages({});
+
+    expect(result.content[0].text).toBe("No messages found in this group.");
+  });
+
+  it("throws when neither group_name nor defaultGroup is available", async () => {
+    const client = fakePageClient({ data: [], has_more: false });
+    const { getMessages } = createToolHandlers(client, undefined);
+
+    await expect(getMessages({})).rejects.toThrow("No group specified");
   });
 });

@@ -1077,3 +1077,125 @@ describe("getSubscriptions", () => {
     expect(result.content[0].text).toBe("Not subscribed to any groups.");
   });
 });
+
+// ---------------------------------------------------------------------------
+// listTopics
+// ---------------------------------------------------------------------------
+
+describe("listTopics", () => {
+  /** Fake client whose apiGet resolves with the given gettopics page body.
+   *  All calls are captured in `apiGetCalls` for assertion without vi.fn(). */
+  function fakeTopicsClient(pageBody) {
+    const apiGetCalls = [];
+    return {
+      fetchAllPages: async () => [],
+      apiGet: async (...args) => {
+        apiGetCalls.push(args);
+        return pageBody;
+      },
+      apiGetCalls,
+    };
+  }
+
+  it("returns a formatted list of topics with id, subject, message count, and date", async () => {
+    const client = fakeTopicsClient({
+      data: [
+        {
+          id: 1001,
+          subject: "Hello world",
+          num_messages: 5,
+          last_post_date: "2024-01-15T10:30:00Z",
+        },
+        {
+          id: 1002,
+          subject: "Another topic",
+          num_messages: 1,
+          last_post_date: "2024-01-14T08:00:00Z",
+        },
+      ],
+      has_more: false,
+    });
+    const { listTopics } = createToolHandlers(client, "testgroup");
+
+    const result = await listTopics({});
+
+    const text = result.content[0].text;
+    expect(text).toContain('Recent topics in "testgroup" (2)');
+    expect(text).toContain("[1001] Hello world | 5 msgs | 2024-01-15");
+    expect(text).toContain("[1002] Another topic | 1 msg | 2024-01-14");
+  });
+
+  it("calls apiGet with gettopics and the resolved group_name", async () => {
+    const client = fakeTopicsClient({ data: [], has_more: false });
+    const { listTopics } = createToolHandlers(client, "default-group");
+
+    await listTopics({ group_name: "explicit-group" });
+
+    expect(client.apiGetCalls).toHaveLength(1);
+    expect(client.apiGetCalls[0]).toEqual([
+      "gettopics",
+      { group_name: "explicit-group", limit: 20 },
+    ]);
+  });
+
+  it("falls back to the default group when group_name is omitted", async () => {
+    const client = fakeTopicsClient({ data: [], has_more: false });
+    const { listTopics } = createToolHandlers(client, "my-default");
+
+    await listTopics({});
+
+    expect(client.apiGetCalls).toHaveLength(1);
+    expect(client.apiGetCalls[0]).toEqual([
+      "gettopics",
+      { group_name: "my-default", limit: 20 },
+    ]);
+  });
+
+  it("passes limit=50 to the API when requested", async () => {
+    const client = fakeTopicsClient({ data: [], has_more: false });
+    const { listTopics } = createToolHandlers(client, "g");
+
+    await listTopics({ limit: 50 });
+
+    expect(client.apiGetCalls[0][1].limit).toBe(50);
+  });
+
+  it("caps the limit at 100 when a value above 100 is requested", async () => {
+    const client = fakeTopicsClient({ data: [], has_more: false });
+    const { listTopics } = createToolHandlers(client, "g");
+
+    await listTopics({ limit: 200 });
+
+    expect(client.apiGetCalls[0][1].limit).toBe(100);
+  });
+
+  it("returns a helpful message when there are no topics", async () => {
+    const client = fakeTopicsClient({ data: [], has_more: false });
+    const { listTopics } = createToolHandlers(client, "testgroup");
+
+    const result = await listTopics({});
+
+    expect(result.content[0].text).toBe("No topics found in this group.");
+  });
+
+  it("handles topics missing optional fields gracefully", async () => {
+    const client = fakeTopicsClient({
+      data: [{ id: 99, subject: "Bare topic" }],
+      has_more: false,
+    });
+    const { listTopics } = createToolHandlers(client, "g");
+
+    const result = await listTopics({});
+
+    expect(result.content[0].text).toContain("[99] Bare topic");
+    // No extra separators for missing fields
+    expect(result.content[0].text).not.toContain("undefined");
+  });
+
+  it("throws when no group is available", async () => {
+    const client = fakeTopicsClient({ data: [], has_more: false });
+    const { listTopics } = createToolHandlers(client, undefined);
+
+    await expect(listTopics({})).rejects.toThrow("No group specified");
+  });
+});

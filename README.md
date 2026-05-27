@@ -10,6 +10,7 @@ An MCP server for Groups.io, enabling conversational querying of group info, mem
 | `get_subscriptions` | List all groups the authenticated user is subscribed to, with role and delivery info |
 | `get_members` | List members of a group, with optional filter (members, mods, pending, banned, bouncing) |
 | `list_subgroups` | List all subgroups of a parent group, with member count and description |
+| `list_topics` | List recent topics in a group's archive (subject, message count, date) |
 | `list_databases` | List all database tables in a group |
 | `describe_database` | Get column schema for a specific table |
 | `query_database` | Fetch all rows as structured records, auto-paginated |
@@ -73,6 +74,8 @@ Once connected, you can ask Claude things like:
 - *"Are there any pending members waiting for approval?"*
 - *"Does this group have any subgroups?"*
 - *"How many members are in each subgroup?"*
+- *"What are the most recent topics in this group?"*
+- *"Show me the last 10 discussion threads"*
 - *"List the databases in my group"*
 - *"What columns does the Members database have?"*
 - *"Query the contacts database and find everyone in Ohio"*

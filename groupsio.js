@@ -376,6 +376,35 @@ export function createToolHandlers(client, defaultGroup) {
     return textResult(`Subscribed groups: ${subs.length}\n${lines.join("\n")}`);
   }
 
+  async function listTopics({ group_name, limit = 20 } = {}) {
+    const group = resolveGroup(group_name, defaultGroup);
+    const page = await client.apiGet("gettopics", {
+      group_name: group,
+      limit: Math.min(limit, 100),
+    });
+
+    const topics = page.data ?? [];
+
+    if (topics.length === 0) {
+      return textResult("No topics found in this group.");
+    }
+
+    const lines = topics.map((t) => {
+      const count =
+        t.num_messages !== undefined
+          ? ` | ${t.num_messages} msg${t.num_messages !== 1 ? "s" : ""}`
+          : "";
+      const date = t.last_post_date
+        ? ` | ${t.last_post_date.split("T")[0]}`
+        : "";
+      return `- [${t.id}] ${t.subject}${count}${date}`;
+    });
+
+    return textResult(
+      `Recent topics in "${group}" (${topics.length}):\n\n${lines.join("\n")}`,
+    );
+  }
+
   return {
     listDatabases,
     describeDatabase,
@@ -384,5 +413,6 @@ export function createToolHandlers(client, defaultGroup) {
     getMembers,
     listSubgroups,
     getSubscriptions,
+    listTopics,
   };
 }

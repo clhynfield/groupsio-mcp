@@ -187,6 +187,28 @@ server.tool(
   handlers.queryDatabase,
 );
 
+// --- list_topics ------------------------------------------------------------
+
+server.tool(
+  "list_topics",
+  "List recent topics in a Groups.io group's archive, sorted by most recent activity.",
+  {
+    group_name: z
+      .string()
+      .optional()
+      .describe(
+        `Name of the Groups.io group (e.g. "mygroup" or "mygroup+subgroup"). ` +
+          `Defaults to GROUPSIO_GROUP env var if set.`,
+      ),
+    limit: z
+      .number()
+      .optional()
+      .default(20)
+      .describe("Number of topics to return (1–100). Defaults to 20."),
+  },
+  handlers.listTopics,
+);
+
 // ---------------------------------------------------------------------------
 // Start
 // ---------------------------------------------------------------------------

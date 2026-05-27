@@ -1330,6 +1330,130 @@ describe("getMessage", () => {
 });
 
 // ---------------------------------------------------------------------------
+// searchArchives
+// ---------------------------------------------------------------------------
+
+describe("searchArchives", () => {
+  it("calls apiGet with searcharchives, the resolved group_name, query, and default limit of 20", async () => {
+    const client = fakePageClient({ data: [], has_more: false });
+    const { searchArchives } = createToolHandlers(client, "default-group");
+
+    await searchArchives({ group_name: "explicit-group", q: "hello" });
+
+    expect(client.apiGetCalls).toHaveLength(1);
+    expect(client.apiGetCalls[0]).toEqual([
+      "searcharchives",
+      { group_name: "explicit-group", q: "hello", limit: 20 },
+    ]);
+  });
+
+  it("falls back to the default group when group_name is omitted", async () => {
+    const client = fakePageClient({ data: [], has_more: false });
+    const { searchArchives } = createToolHandlers(client, "my-default");
+
+    await searchArchives({ q: "test query" });
+
+    expect(client.apiGetCalls[0]).toEqual([
+      "searcharchives",
+      { group_name: "my-default", q: "test query", limit: 20 },
+    ]);
+  });
+
+  it("passes an explicit limit to the API", async () => {
+    const client = fakePageClient({ data: [], has_more: false });
+    const { searchArchives } = createToolHandlers(client, "g");
+
+    await searchArchives({ q: "something", limit: 50 });
+
+    expect(client.apiGetCalls[0][1].limit).toBe(50);
+  });
+
+  it("caps the limit at 100 when a value above 100 is requested", async () => {
+    const client = fakePageClient({ data: [], has_more: false });
+    const { searchArchives } = createToolHandlers(client, "g");
+
+    await searchArchives({ q: "something", limit: 200 });
+
+    expect(client.apiGetCalls[0][1].limit).toBe(100);
+  });
+
+  it("returns a formatted header and one line per result", async () => {
+    const client = fakePageClient({
+      data: [
+        {
+          msg_num: 201,
+          subject: "Annual meeting",
+          from: "Alice <alice@example.com>",
+          date: "2024-04-01T09:00:00Z",
+        },
+        {
+          msg_num: 202,
+          subject: "Re: Annual meeting",
+          from: "Bob <bob@example.com>",
+          date: "2024-04-02T11:30:00Z",
+        },
+      ],
+      has_more: false,
+    });
+    const { searchArchives } = createToolHandlers(client, "testgroup");
+
+    const result = await searchArchives({ q: "annual" });
+
+    const text = result.content[0].text;
+    expect(text).toContain('Search results for "annual" in "testgroup" (2 found):');
+    expect(text).toContain("[201] Annual meeting | from: Alice <alice@example.com> | 2024-04-01");
+    expect(text).toContain("[202] Re: Annual meeting | from: Bob <bob@example.com> | 2024-04-02");
+  });
+
+  it("returns a no-results message when data is empty", async () => {
+    const client = fakePageClient({ data: [], has_more: false });
+    const { searchArchives } = createToolHandlers(client, "testgroup");
+
+    const result = await searchArchives({ q: "xyzzy" });
+
+    expect(result.content[0].text).toBe(
+      'No results found for "xyzzy" in "testgroup".',
+    );
+  });
+
+  it("returns a no-results message when data is absent", async () => {
+    const client = fakePageClient({ has_more: false });
+    const { searchArchives } = createToolHandlers(client, "testgroup");
+
+    const result = await searchArchives({ q: "missing" });
+
+    expect(result.content[0].text).toBe(
+      'No results found for "missing" in "testgroup".',
+    );
+  });
+
+  it("throws a descriptive error when q is missing", async () => {
+    const client = fakePageClient({ data: [], has_more: false });
+    const { searchArchives } = createToolHandlers(client, "testgroup");
+
+    await expect(searchArchives({ group_name: "testgroup" })).rejects.toThrow(
+      /query/i,
+    );
+  });
+
+  it("throws a descriptive error when q is an empty string", async () => {
+    const client = fakePageClient({ data: [], has_more: false });
+    const { searchArchives } = createToolHandlers(client, "testgroup");
+
+    await expect(searchArchives({ q: "" })).rejects.toThrow(/query/i);
+  });
+
+  it("throws when neither group_name nor defaultGroup is available", async () => {
+    const client = fakePageClient({ data: [], has_more: false });
+    const { searchArchives } = createToolHandlers(client, undefined);
+
+    await expect(searchArchives({ q: "hello" })).rejects.toThrow(
+      "No group specified",
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
 // getMessages
 // ---------------------------------------------------------------------------
 

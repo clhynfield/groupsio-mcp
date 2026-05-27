@@ -448,6 +448,33 @@ export function createToolHandlers(client, defaultGroup) {
     );
   }
 
+  async function searchArchives({ group_name, q, limit = 20 } = {}) {
+    if (!q) {
+      throw new Error("A search query is required.");
+    }
+    const group = resolveGroup(group_name, defaultGroup);
+    const page = await client.apiGet("searcharchives", {
+      group_name: group,
+      q,
+      limit: Math.min(limit, 100),
+    });
+
+    const results = page.data ?? [];
+
+    if (results.length === 0) {
+      return textResult(`No results found for "${q}" in "${group}".`);
+    }
+
+    const lines = results.map(
+      (m) =>
+        `[${m.msg_num}] ${m.subject} | from: ${m.from} | ${m.date.split("T")[0]}`,
+    );
+
+    return textResult(
+      `Search results for "${q}" in "${group}" (${results.length} found):\n${lines.join("\n")}`,
+    );
+  }
+
   return {
     listDatabases,
     describeDatabase,
@@ -459,5 +486,6 @@ export function createToolHandlers(client, defaultGroup) {
     getMessage,
     getMessages,
     listTopics,
+    searchArchives,
   };
 }

@@ -13,6 +13,7 @@ An MCP server for Groups.io, enabling conversational querying of group info, mem
 | `list_topics` | List recent topics in a group's archive (subject, message count, date) |
 | `get_messages` | List recent messages in a group's archive (message number, subject, sender, date) |
 | `get_message` | Fetch a single message by number, with subject, sender, date, and body |
+| `search_archives` | Search the message archive by keyword or phrase |
 | `list_databases` | List all database tables in a group |
 | `describe_database` | Get column schema for a specific table |
 | `query_database` | Fetch all rows as structured records, auto-paginated |
@@ -82,6 +83,8 @@ Once connected, you can ask Claude things like:
 - *"Who has been posting recently?"*
 - *"Show me message #42"*
 - *"What did message 17 say?"*
+- *"Search the archive for messages about the annual picnic"*
+- *"Find any messages mentioning the budget"*
 - *"List the databases in my group"*
 - *"What columns does the Members database have?"*
 - *"Query the contacts database and find everyone in Ohio"*

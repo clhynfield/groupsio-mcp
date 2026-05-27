@@ -106,6 +106,31 @@ server.tool(
   handlers.getSubscriptions,
 );
 
+// --- search_archives --------------------------------------------------------
+
+server.tool(
+  "search_archives",
+  "Search a Groups.io group's message archive by keyword or phrase, returning matching messages with subject, sender, and date.",
+  {
+    group_name: z
+      .string()
+      .optional()
+      .describe(
+        `Name of the Groups.io group (e.g. "mygroup" or "mygroup+subgroup"). ` +
+          `Defaults to GROUPSIO_GROUP env var if set.`,
+      ),
+    q: z
+      .string()
+      .describe("Search query — keywords or phrases to look for in the archive."),
+    limit: z
+      .number()
+      .optional()
+      .default(20)
+      .describe("Maximum number of results to return (1–100). Defaults to 20."),
+  },
+  handlers.searchArchives,
+);
+
 // --- get_message ------------------------------------------------------------
 
 server.tool(

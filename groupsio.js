@@ -186,7 +186,12 @@ export function createApiClient({
       headers: { Authorization: `Bearer ${apiKey}` },
     });
 
-    const body = await res.json();
+    let body;
+    try {
+      body = await res.json();
+    } catch {
+      throw new Error("Groups.io API error: server returned a non-JSON response");
+    }
 
     if (!res.ok || body.object === "error") {
       const msg = body.type ?? res.statusText;
@@ -500,14 +505,12 @@ export function createToolHandlers(client, defaultGroup) {
     );
   }
 
-  async function getTopicMessages({ group_name, topic_id, limit = 20 } = {}) {
+  async function getTopicMessages({ topic_id, limit = 20 } = {}) {
     if (!topic_id) {
       throw new Error("topic_id is required.");
     }
-    const group = resolveGroup(group_name, defaultGroup);
     const page = await catchApiError(() =>
-      client.apiGet("gettopicmessages", {
-        group_name: group,
+      client.apiGet("gettopic", {
         topic_id,
         limit: clampLimit(limit),
       }),
@@ -521,7 +524,7 @@ export function createToolHandlers(client, defaultGroup) {
     }
 
     return textResult(
-      `Messages in topic ${topic_id} in "${group}" (${messages.length} found):\n${messages.map(formatMessageLine).join("\n")}`,
+      `Messages in topic ${topic_id} (${messages.length} found):\n${messages.map(formatMessageLine).join("\n")}`,
     );
   }
 

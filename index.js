@@ -284,13 +284,6 @@ server.tool(
     "Use this after list_topics to read the messages in a thread — topic IDs from " +
     "list_topics can be passed directly as topic_id here.",
   {
-    group_name: z
-      .string()
-      .optional()
-      .describe(
-        `Name of the Groups.io group (e.g. "mygroup" or "mygroup+subgroup"). ` +
-          `Defaults to GROUPSIO_GROUP env var if set.`,
-      ),
     topic_id: z
       .number()
       .describe(

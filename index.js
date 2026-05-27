@@ -276,6 +276,35 @@ server.tool(
   handlers.listTopics,
 );
 
+// --- get_topic_messages -----------------------------------------------------
+
+server.tool(
+  "get_topic_messages",
+  "Fetch all messages in a specific topic thread from a Groups.io group's archive. " +
+    "Use this after list_topics to read the messages in a thread — topic IDs from " +
+    "list_topics can be passed directly as topic_id here.",
+  {
+    group_name: z
+      .string()
+      .optional()
+      .describe(
+        `Name of the Groups.io group (e.g. "mygroup" or "mygroup+subgroup"). ` +
+          `Defaults to GROUPSIO_GROUP env var if set.`,
+      ),
+    topic_id: z
+      .number()
+      .describe(
+        "The topic ID to fetch messages for. Use the ID returned by list_topics.",
+      ),
+    limit: z
+      .number()
+      .optional()
+      .default(20)
+      .describe("Number of messages to return (1–100). Defaults to 20."),
+  },
+  handlers.getTopicMessages,
+);
+
 // ---------------------------------------------------------------------------
 // Start
 // ---------------------------------------------------------------------------

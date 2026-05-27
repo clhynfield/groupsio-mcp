@@ -1558,6 +1558,168 @@ describe("getMessages", () => {
 });
 
 // ---------------------------------------------------------------------------
+// getTopicMessages
+// ---------------------------------------------------------------------------
+
+describe("getTopicMessages", () => {
+  it("calls apiGet with gettopicmessages, the resolved group_name, topic_id, and default limit of 20", async () => {
+    const client = fakePageClient({ data: [], has_more: false });
+    const { getTopicMessages } = createToolHandlers(client, "default-group");
+
+    await getTopicMessages({ group_name: "explicit-group", topic_id: 555 });
+
+    expect(client.apiGetCalls).toHaveLength(1);
+    expect(client.apiGetCalls[0]).toEqual([
+      "gettopicmessages",
+      { group_name: "explicit-group", topic_id: 555, limit: 20 },
+    ]);
+  });
+
+  it("falls back to the default group when group_name is omitted", async () => {
+    const client = fakePageClient({ data: [], has_more: false });
+    const { getTopicMessages } = createToolHandlers(client, "my-default");
+
+    await getTopicMessages({ topic_id: 42 });
+
+    expect(client.apiGetCalls[0]).toEqual([
+      "gettopicmessages",
+      { group_name: "my-default", topic_id: 42, limit: 20 },
+    ]);
+  });
+
+  it("passes an explicit limit to the API", async () => {
+    const client = fakePageClient({ data: [], has_more: false });
+    const { getTopicMessages } = createToolHandlers(client, "g");
+
+    await getTopicMessages({ topic_id: 10, limit: 50 });
+
+    expect(client.apiGetCalls[0][1].limit).toBe(50);
+  });
+
+  it("caps the limit at 100 when a value above 100 is requested", async () => {
+    const client = fakePageClient({ data: [], has_more: false });
+    const { getTopicMessages } = createToolHandlers(client, "g");
+
+    await getTopicMessages({ topic_id: 10, limit: 999 });
+
+    expect(client.apiGetCalls[0][1].limit).toBe(100);
+  });
+
+  it("returns a formatted header and one line per message", async () => {
+    const client = fakePageClient({
+      data: [
+        {
+          msg_num: 301,
+          subject: "First post",
+          from: "Alice <alice@example.com>",
+          date: "2024-06-01T10:00:00Z",
+        },
+        {
+          msg_num: 302,
+          subject: "Re: First post",
+          from: "Bob <bob@example.com>",
+          date: "2024-06-02T15:30:00Z",
+        },
+      ],
+      has_more: false,
+    });
+    const { getTopicMessages } = createToolHandlers(client, "testgroup");
+
+    const result = await getTopicMessages({ topic_id: 77 });
+
+    const text = result.content[0].text;
+    expect(text).toContain('Messages in topic 77 in "testgroup" (2 found):');
+    expect(text).toContain("[301] First post | from: Alice <alice@example.com> | 2024-06-01");
+    expect(text).toContain("[302] Re: First post | from: Bob <bob@example.com> | 2024-06-02");
+  });
+
+  it("returns a no-messages message when data is empty", async () => {
+    const client = fakePageClient({ data: [], has_more: false });
+    const { getTopicMessages } = createToolHandlers(client, "testgroup");
+
+    const result = await getTopicMessages({ topic_id: 88 });
+
+    expect(result.content[0].text).toBe("No messages found for topic 88.");
+  });
+
+  it("returns a no-messages message when data is absent", async () => {
+    const client = fakePageClient({ has_more: false });
+    const { getTopicMessages } = createToolHandlers(client, "testgroup");
+
+    const result = await getTopicMessages({ topic_id: 99 });
+
+    expect(result.content[0].text).toBe("No messages found for topic 99.");
+  });
+
+  it("throws when topic_id is missing", async () => {
+    const client = fakePageClient({ data: [], has_more: false });
+    const { getTopicMessages } = createToolHandlers(client, "testgroup");
+
+    await expect(getTopicMessages({})).rejects.toThrow(/topic_id/);
+  });
+
+  it("throws when neither group_name nor defaultGroup is available", async () => {
+    const client = fakePageClient({ data: [], has_more: false });
+    const { getTopicMessages } = createToolHandlers(client, undefined);
+
+    await expect(getTopicMessages({ topic_id: 1 })).rejects.toThrow("No group specified");
+  });
+
+  it("returns isError with not_subscribed hint when API throws not_subscribed", async () => {
+    const client = fakeErrorClient("Groups.io API error: not_subscribed");
+    const { getTopicMessages } = createToolHandlers(client, "mygroup");
+
+    const result = await getTopicMessages({ topic_id: 5 });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toMatch(/not subscribed/i);
+    expect(result.content[0].text).toContain("parentgroup+subgroup");
+  });
+
+  it("returns isError with no_such_group hint when API throws no_such_group", async () => {
+    const client = fakeErrorClient("Groups.io API error: no_such_group");
+    const { getTopicMessages } = createToolHandlers(client, "mygroup");
+
+    const result = await getTopicMessages({ topic_id: 5 });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toMatch(/not found/i);
+  });
+
+  it("returns isError with permission hint when API throws no_permission", async () => {
+    const client = fakeErrorClient("Groups.io API error: no_permission");
+    const { getTopicMessages } = createToolHandlers(client, "mygroup");
+
+    const result = await getTopicMessages({ topic_id: 5 });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toMatch(/permission denied/i);
+    expect(result.content[0].text).toMatch(/restricted/i);
+  });
+
+  it("returns isError with auth hint when API throws unauthorized", async () => {
+    const client = fakeErrorClient("Groups.io API error: unauthorized");
+    const { getTopicMessages } = createToolHandlers(client, "mygroup");
+
+    const result = await getTopicMessages({ topic_id: 5 });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toMatch(/authentication/i);
+    expect(result.content[0].text).toMatch(/api key/i);
+  });
+
+  it("returns isError with generic fallback that includes the original message for unknown errors", async () => {
+    const client = fakeErrorClient("Groups.io API error: topic_not_found");
+    const { getTopicMessages } = createToolHandlers(client, "mygroup");
+
+    const result = await getTopicMessages({ topic_id: 5 });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("topic_not_found");
+  });
+});
+
+// ---------------------------------------------------------------------------
 // API error handling — all four archive handlers return isError results
 // ---------------------------------------------------------------------------
 

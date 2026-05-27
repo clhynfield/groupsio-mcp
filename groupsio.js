@@ -63,6 +63,21 @@ async function catchApiError(fn) {
 }
 
 /**
+ * Cap a caller-supplied limit at the Groups.io API maximum of 100 per page.
+ */
+function clampLimit(limit) {
+  return Math.min(limit, 100);
+}
+
+/**
+ * Format a single archive message object into the standard one-line summary
+ * shared by getMessages, getTopicMessages, and searchArchives.
+ */
+function formatMessageLine(m) {
+  return `[${m.msg_num}] ${m.subject} | from: ${m.from} | ${m.date.split("T")[0]}`;
+}
+
+/**
  * Derive a human-readable role from a Groups.io mod_status string.
  */
 function deriveRole(mod_status) {
@@ -439,7 +454,7 @@ export function createToolHandlers(client, defaultGroup) {
     const page = await catchApiError(() =>
       client.apiGet("getmessages", {
         group_name: group,
-        limit: Math.min(limit, 100),
+        limit: clampLimit(limit),
       }),
     );
     if (page.isError) return page;
@@ -450,12 +465,7 @@ export function createToolHandlers(client, defaultGroup) {
       return textResult("No messages found in this group.");
     }
 
-    const lines = messages.map(
-      (m) =>
-        `[${m.msg_num}] ${m.subject} | from: ${m.from} | ${m.date.split("T")[0]}`,
-    );
-
-    return textResult(lines.join("\n"));
+    return textResult(messages.map(formatMessageLine).join("\n"));
   }
 
   async function listTopics({ group_name, limit = 20 } = {}) {
@@ -463,7 +473,7 @@ export function createToolHandlers(client, defaultGroup) {
     const page = await catchApiError(() =>
       client.apiGet("gettopics", {
         group_name: group,
-        limit: Math.min(limit, 100),
+        limit: clampLimit(limit),
       }),
     );
     if (page.isError) return page;
@@ -490,6 +500,31 @@ export function createToolHandlers(client, defaultGroup) {
     );
   }
 
+  async function getTopicMessages({ group_name, topic_id, limit = 20 } = {}) {
+    if (!topic_id) {
+      throw new Error("topic_id is required.");
+    }
+    const group = resolveGroup(group_name, defaultGroup);
+    const page = await catchApiError(() =>
+      client.apiGet("gettopicmessages", {
+        group_name: group,
+        topic_id,
+        limit: clampLimit(limit),
+      }),
+    );
+    if (page.isError) return page;
+
+    const messages = page.data ?? [];
+
+    if (messages.length === 0) {
+      return textResult(`No messages found for topic ${topic_id}.`);
+    }
+
+    return textResult(
+      `Messages in topic ${topic_id} in "${group}" (${messages.length} found):\n${messages.map(formatMessageLine).join("\n")}`,
+    );
+  }
+
   async function searchArchives({ group_name, q, limit = 20 } = {}) {
     if (!q) {
       throw new Error("A search query is required.");
@@ -499,7 +534,7 @@ export function createToolHandlers(client, defaultGroup) {
       client.apiGet("searcharchives", {
         group_name: group,
         q,
-        limit: Math.min(limit, 100),
+        limit: clampLimit(limit),
       }),
     );
     if (page.isError) return page;
@@ -510,13 +545,8 @@ export function createToolHandlers(client, defaultGroup) {
       return textResult(`No results found for "${q}" in "${group}".`);
     }
 
-    const lines = results.map(
-      (m) =>
-        `[${m.msg_num}] ${m.subject} | from: ${m.from} | ${m.date.split("T")[0]}`,
-    );
-
     return textResult(
-      `Search results for "${q}" in "${group}" (${results.length} found):\n${lines.join("\n")}`,
+      `Search results for "${q}" in "${group}" (${results.length} found):\n${results.map(formatMessageLine).join("\n")}`,
     );
   }
 
@@ -531,6 +561,7 @@ export function createToolHandlers(client, defaultGroup) {
     getMessage,
     getMessages,
     listTopics,
+    getTopicMessages,
     searchArchives,
   };
 }

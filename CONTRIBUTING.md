@@ -42,6 +42,13 @@ Repeat. The cycle should take minutes, not hours.
 **Tests are first-class code.** Treat them with the same care as production
 code: good names, no duplication, clear assertions.
 
+**Verify external APIs before writing tests.** When adding or fixing code that
+calls the Groups.io API, use `curl` to confirm endpoint names, field names, and
+response shapes against the live API *before* encoding them in test fixtures.
+Documentation is often incomplete; a test fixture built on a wrong field name
+will pass while testing the wrong behaviour. See `AGENTS.md` for the exact
+`curl` invocation pattern.
+
 ### Small Iterations
 
 Break every feature into the smallest possible vertical slice that is

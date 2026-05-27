@@ -203,6 +203,40 @@ Regardless of which phase you are in:
 
 ---
 
+## Working with External APIs
+
+Before writing tests or implementation for any code that calls the Groups.io
+API (or any external HTTP API):
+
+1. **Verify the live response first.** Use `curl` via `op run` to confirm
+   endpoint names, field names, and response shapes against the real API.
+   Documentation is often incomplete or wrong; the live response is the source
+   of truth.
+
+   ```bash
+   op run --env-file .envrc -- sh -c \
+     'curl -s "https://groups.io/api/v1/<endpoint>?<params>" \
+       -H "Authorization: Bearer $GROUPSIO_API_KEY" | python3 -m json.tool'
+   ```
+
+2. **Check field names explicitly.** Print the keys of a real response object
+   before assuming what fields exist:
+
+   ```bash
+   ... | python3 -c "import sys,json; d=json.load(sys.stdin); print(list(d['data'][0].keys()))"
+   ```
+
+3. **Then write the test.** Only encode field names and response shapes in
+   test fixtures once you have confirmed them against the live API. A test
+   built on a wrong assumption about field names will pass while testing the
+   wrong thing — which is worse than no test.
+
+This approach is especially important here because the Groups.io API
+documentation is incomplete and the field names in real responses have
+differed from what the docs imply (e.g. `name`/`created` vs `from`/`date`).
+
+---
+
 ## Fake / Stub Conventions
 
 This project uses plain JS objects and functions as test doubles — no

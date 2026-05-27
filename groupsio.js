@@ -30,6 +30,39 @@ function textResult(text) {
 }
 
 /**
+ * Convert a Groups.io API error into an MCP isError result with a friendly message.
+ */
+function apiErrorResult(err) {
+  const msg = err.message ?? String(err);
+  let text;
+  if (msg.includes("not_subscribed")) {
+    text = `Not subscribed to this group. For subgroups, use the parentgroup+subgroup name format.`;
+  } else if (msg.includes("no_such_group")) {
+    text = `Group not found. For subgroups, use the parentgroup+subgroup name format.`;
+  } else if (msg.includes("no_permission") || msg.includes("inadequate_permissions")) {
+    text = `Permission denied. This group's archives may be restricted to members only.`;
+  } else if (msg.includes("unauthorized")) {
+    text = `Authentication failed. Check that your API key is valid and correctly configured.`;
+  } else {
+    text = `API error: ${msg}`;
+  }
+  return { isError: true, content: [{ type: "text", text }] };
+}
+
+/**
+ * Run an async operation and, if it throws, return an MCP isError result
+ * instead of propagating the exception.  Programming errors (e.g. missing
+ * required args) are still thrown before this wrapper is reached.
+ */
+async function catchApiError(fn) {
+  try {
+    return await fn();
+  } catch (err) {
+    return apiErrorResult(err);
+  }
+}
+
+/**
  * Derive a human-readable role from a Groups.io mod_status string.
  */
 function deriveRole(mod_status) {
@@ -381,7 +414,10 @@ export function createToolHandlers(client, defaultGroup) {
       throw new Error("msg_num is required.");
     }
     const group = resolveGroup(group_name, defaultGroup);
-    const m = await client.apiGet("getmessage", { group_name: group, msg_num });
+    const m = await catchApiError(() =>
+      client.apiGet("getmessage", { group_name: group, msg_num }),
+    );
+    if (m.isError) return m;
 
     const lines = [
       `Message #${m.msg_num} in "${group}"`,
@@ -400,10 +436,13 @@ export function createToolHandlers(client, defaultGroup) {
 
   async function getMessages({ group_name, limit = 20 } = {}) {
     const group = resolveGroup(group_name, defaultGroup);
-    const page = await client.apiGet("getmessages", {
-      group_name: group,
-      limit: Math.min(limit, 100),
-    });
+    const page = await catchApiError(() =>
+      client.apiGet("getmessages", {
+        group_name: group,
+        limit: Math.min(limit, 100),
+      }),
+    );
+    if (page.isError) return page;
 
     const messages = page.data ?? [];
 
@@ -421,10 +460,13 @@ export function createToolHandlers(client, defaultGroup) {
 
   async function listTopics({ group_name, limit = 20 } = {}) {
     const group = resolveGroup(group_name, defaultGroup);
-    const page = await client.apiGet("gettopics", {
-      group_name: group,
-      limit: Math.min(limit, 100),
-    });
+    const page = await catchApiError(() =>
+      client.apiGet("gettopics", {
+        group_name: group,
+        limit: Math.min(limit, 100),
+      }),
+    );
+    if (page.isError) return page;
 
     const topics = page.data ?? [];
 
@@ -453,11 +495,14 @@ export function createToolHandlers(client, defaultGroup) {
       throw new Error("A search query is required.");
     }
     const group = resolveGroup(group_name, defaultGroup);
-    const page = await client.apiGet("searcharchives", {
-      group_name: group,
-      q,
-      limit: Math.min(limit, 100),
-    });
+    const page = await catchApiError(() =>
+      client.apiGet("searcharchives", {
+        group_name: group,
+        q,
+        limit: Math.min(limit, 100),
+      }),
+    );
+    if (page.isError) return page;
 
     const results = page.data ?? [];
 

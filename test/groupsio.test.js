@@ -55,6 +55,17 @@ function fakePageClient(pageBody) {
   };
 }
 
+/** Builds a fake client whose apiGet always rejects with an Error whose
+ *  message is `errorMessage`. Used to test handler error-handling behaviour. */
+function fakeErrorClient(errorMessage) {
+  return {
+    fetchAllPages: async () => [],
+    apiGet: async () => {
+      throw new Error(errorMessage);
+    },
+  };
+}
+
 // ---------------------------------------------------------------------------
 // resolveGroup
 // ---------------------------------------------------------------------------
@@ -1543,5 +1554,224 @@ describe("getMessages", () => {
     const { getMessages } = createToolHandlers(client, undefined);
 
     await expect(getMessages({})).rejects.toThrow("No group specified");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// API error handling — all four archive handlers return isError results
+// ---------------------------------------------------------------------------
+
+describe("API error handling", () => {
+  // --- getMessages ---
+
+  describe("getMessages", () => {
+    it("returns isError with not_subscribed hint when error contains not_subscribed", async () => {
+      const client = fakeErrorClient(
+        "Groups.io API error: not_subscribed",
+      );
+      const { getMessages } = createToolHandlers(client, "mygroup");
+
+      const result = await getMessages({});
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].type).toBe("text");
+      expect(result.content[0].text).toMatch(/not subscribed/i);
+      expect(result.content[0].text).toContain("parentgroup+subgroup");
+    });
+
+    it("returns isError with no_such_group hint when error contains no_such_group", async () => {
+      const client = fakeErrorClient("Groups.io API error: no_such_group");
+      const { getMessages } = createToolHandlers(client, "mygroup");
+
+      const result = await getMessages({});
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toMatch(/not found/i);
+      expect(result.content[0].text).toContain("parentgroup+subgroup");
+    });
+
+    it("returns isError with permission hint when error contains no_permission", async () => {
+      const client = fakeErrorClient("Groups.io API error: no_permission");
+      const { getMessages } = createToolHandlers(client, "mygroup");
+
+      const result = await getMessages({});
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toMatch(/permission denied/i);
+      expect(result.content[0].text).toMatch(/restricted/i);
+    });
+
+    it("returns isError with permission hint when error contains inadequate_permissions", async () => {
+      const client = fakeErrorClient(
+        "Groups.io API error: inadequate_permissions",
+      );
+      const { getMessages } = createToolHandlers(client, "mygroup");
+
+      const result = await getMessages({});
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toMatch(/permission denied/i);
+    });
+
+    it("returns isError with auth hint when error contains unauthorized", async () => {
+      const client = fakeErrorClient("Groups.io API error: unauthorized");
+      const { getMessages } = createToolHandlers(client, "mygroup");
+
+      const result = await getMessages({});
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toMatch(/authentication/i);
+      expect(result.content[0].text).toMatch(/api key/i);
+    });
+
+    it("returns isError with generic fallback that includes the original message", async () => {
+      const client = fakeErrorClient("Groups.io API error: something_weird");
+      const { getMessages } = createToolHandlers(client, "mygroup");
+
+      const result = await getMessages({});
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain("something_weird");
+    });
+  });
+
+  // --- getMessage ---
+
+  describe("getMessage", () => {
+    it("returns isError with not_subscribed hint when error contains not_subscribed", async () => {
+      const client = fakeErrorClient("Groups.io API error: not_subscribed");
+      const { getMessage } = createToolHandlers(client, "mygroup");
+
+      const result = await getMessage({ msg_num: 1 });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toMatch(/not subscribed/i);
+      expect(result.content[0].text).toContain("parentgroup+subgroup");
+    });
+
+    it("returns isError with permission hint when error contains inadequate_permissions", async () => {
+      const client = fakeErrorClient(
+        "Groups.io API error: inadequate_permissions",
+      );
+      const { getMessage } = createToolHandlers(client, "mygroup");
+
+      const result = await getMessage({ msg_num: 5 });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toMatch(/permission denied/i);
+    });
+
+    it("returns isError with auth hint when error contains unauthorized", async () => {
+      const client = fakeErrorClient("Groups.io API error: unauthorized");
+      const { getMessage } = createToolHandlers(client, "mygroup");
+
+      const result = await getMessage({ msg_num: 5 });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toMatch(/authentication/i);
+    });
+
+    it("returns isError with generic fallback for unknown error types", async () => {
+      const client = fakeErrorClient("Groups.io API error: internal_error");
+      const { getMessage } = createToolHandlers(client, "mygroup");
+
+      const result = await getMessage({ msg_num: 5 });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain("internal_error");
+    });
+  });
+
+  // --- listTopics ---
+
+  describe("listTopics", () => {
+    it("returns isError with not_subscribed hint when error contains not_subscribed", async () => {
+      const client = fakeErrorClient("Groups.io API error: not_subscribed");
+      const { listTopics } = createToolHandlers(client, "mygroup");
+
+      const result = await listTopics({});
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toMatch(/not subscribed/i);
+      expect(result.content[0].text).toContain("parentgroup+subgroup");
+    });
+
+    it("returns isError with no_such_group hint when error contains no_such_group", async () => {
+      const client = fakeErrorClient("Groups.io API error: no_such_group");
+      const { listTopics } = createToolHandlers(client, "mygroup");
+
+      const result = await listTopics({});
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toMatch(/not found/i);
+      expect(result.content[0].text).toContain("parentgroup+subgroup");
+    });
+
+    it("returns isError with generic fallback for unknown error types", async () => {
+      const client = fakeErrorClient("Groups.io API error: timeout");
+      const { listTopics } = createToolHandlers(client, "mygroup");
+
+      const result = await listTopics({});
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain("timeout");
+    });
+  });
+
+  // --- searchArchives ---
+
+  describe("searchArchives", () => {
+    it("returns isError with not_subscribed hint when error contains not_subscribed", async () => {
+      const client = fakeErrorClient("Groups.io API error: not_subscribed");
+      const { searchArchives } = createToolHandlers(client, "mygroup");
+
+      const result = await searchArchives({ q: "hello" });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toMatch(/not subscribed/i);
+      expect(result.content[0].text).toContain("parentgroup+subgroup");
+    });
+
+    it("returns isError with no_such_group hint when error contains no_such_group", async () => {
+      const client = fakeErrorClient("Groups.io API error: no_such_group");
+      const { searchArchives } = createToolHandlers(client, "mygroup");
+
+      const result = await searchArchives({ q: "hello" });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toMatch(/not found/i);
+    });
+
+    it("returns isError with permission hint when error contains no_permission", async () => {
+      const client = fakeErrorClient("Groups.io API error: no_permission");
+      const { searchArchives } = createToolHandlers(client, "mygroup");
+
+      const result = await searchArchives({ q: "hello" });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toMatch(/permission denied/i);
+      expect(result.content[0].text).toMatch(/restricted/i);
+    });
+
+    it("returns isError with auth hint when error contains unauthorized", async () => {
+      const client = fakeErrorClient("Groups.io API error: unauthorized");
+      const { searchArchives } = createToolHandlers(client, "mygroup");
+
+      const result = await searchArchives({ q: "hello" });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toMatch(/authentication/i);
+      expect(result.content[0].text).toMatch(/api key/i);
+    });
+
+    it("returns isError with generic fallback for unknown error types", async () => {
+      const client = fakeErrorClient("Groups.io API error: rate_limited");
+      const { searchArchives } = createToolHandlers(client, "mygroup");
+
+      const result = await searchArchives({ q: "hello" });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain("rate_limited");
+    });
   });
 });

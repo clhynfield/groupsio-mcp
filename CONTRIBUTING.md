@@ -103,6 +103,52 @@ suite before and after is the definition of a safe refactor.
 
 ---
 
+## Architecture Decision Records (ADRs)
+
+Architecturally significant changes require a **Lightweight Architecture
+Decision Record** before any test or implementation code is written or
+modified.
+
+### What warrants an ADR
+
+Write an ADR whenever a proposed change affects:
+
+- Transport layer, protocol, or external API contract
+- Dependency additions or removals (runtime dependencies especially)
+- Module boundaries or public interface shape
+- Authentication / authorisation model
+- Data formats exchanged across system boundaries
+- Agent autonomy or AI-integration patterns
+- Any decision that would be costly or disruptive to reverse
+
+If you are unsure, write the ADR. The cost of an unnecessary record is
+lower than the cost of an undocumented, hard-to-reverse decision.
+
+### Lifecycle
+
+1. **Draft** — Create `docs/architecture/decisions/NNNN-short-title.md`
+   (copy `docs/architecture/decisions/template.md`). Set status to `Draft`.
+   Open a PR with only the ADR file — no test or implementation changes.
+2. **Review** — Collaborators review the context, decision, and consequences.
+   Discussion happens in the PR. No implementation work proceeds during this
+   phase.
+3. **Accepted** (or rejected) — Once consensus is reached, update the status
+   field and merge. Implementation work may now begin.
+4. **Superseded** — When a later ADR overturns this one, add a
+   "Superseded by ADR NNNN" note and update the status. Never delete old
+   records.
+
+### What a good ADR PR looks like
+
+- Contains exactly one ADR file (plus a `template.md` update if the template
+  itself is changing). No source code, no tests.
+- The **Context** section makes the constraints legible to someone who wasn't
+  in the room.
+- The **Consequences** section honestly names trade-offs, not just benefits.
+- Status is `Draft` at PR open time; changed to `Accepted` only on merge.
+
+---
+
 ## Project Conventions
 
 | Convention | Detail |

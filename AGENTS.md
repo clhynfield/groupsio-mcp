@@ -36,6 +36,44 @@ picture. The rules that most affect agent behaviour:
 
 ---
 
+## Architecture Decision Records (ADRs)
+
+**Before writing any test or implementation code**, determine whether the
+proposed change is architecturally significant. If it is, you must:
+
+1. **Create a Draft ADR** in `docs/architecture/decisions/NNNN-short-title.md`
+   (copy `docs/architecture/decisions/template.md`, increment the number).
+2. **Stop.** Open a PR containing only the ADR file. Do not write tests or
+   implementation code until the ADR is reviewed and accepted by a human.
+3. **Resume implementation** only after the ADR status is changed to
+   `Accepted` and merged.
+
+### What counts as architecturally significant
+
+A change is architectural if it affects any of the following:
+
+- Transport layer, protocol, or external API contract
+- Runtime dependency additions or removals
+- Module boundaries or the shape of public interfaces
+- Authentication or authorisation model
+- Data formats at system boundaries
+- Agent autonomy or AI-integration patterns
+- Any decision that would be costly or disruptive to reverse
+
+**If you are uncertain, write the ADR.** A false-positive ADR costs a short
+review cycle. A missed architectural change can cost a rewrite.
+
+### What agents must NOT do
+
+- Do not write test or implementation code for an architectural change before
+  the ADR is Accepted.
+- Do not accept or merge your own ADR. Status promotion requires a human
+  reviewer.
+- Do not modify an Accepted ADR to change its decision. Supersede it with a
+  new ADR instead.
+
+---
+
 ## Ping-Pong TDD with Subagents
 
 For any non-trivial feature, the orchestrating agent should run three
@@ -272,6 +310,7 @@ useful.
 
 ## Validation Checklist (for any agent, any phase)
 
+- [ ] If this change is architecturally significant, a Draft ADR exists and is Accepted before I touch any test or implementation file
 - [ ] `npm test` is green before my changes
 - [ ] My diff is scoped to the correct file(s) for this phase
 - [ ] `npm test` is green after my changes

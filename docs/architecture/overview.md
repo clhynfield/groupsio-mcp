@@ -17,20 +17,26 @@ otherwise cannot talk to each other: an MCP-capable LLM host on one side, and
 the Groups.io REST API on the other.
 
 ```mermaid
-flowchart TB
-    user(["User"])
+C4Context
+    title System Context — groupsio-mcp
 
-    subgraph host["MCP Host"]
-        claude["Claude<br/><i>LLM client: plans tool calls,<br/>reasons over results</i>"]
-    end
+    Person(user, "User", "Asks questions about their Groups.io group in natural language")
 
-    connector["groupsio-mcp<br/><i>MCP server: exposes Groups.io<br/>as tools over stdio</i>"]
+    System_Boundary(host, "MCP Host") {
+        System(claude, "Claude", "LLM client that plans tool calls and reasons over results")
+    }
 
-    groupsio["Groups.io API<br/><i>REST API at groups.io/api/v1<br/>(marked ALPHA)</i>"]
+    System(connector, "groupsio-mcp", "MCP server. Exposes Groups.io as a set of tools over stdio.")
 
-    user -- "Natural-language<br/>questions" --> claude
-    claude -- "Tool calls<br/>(MCP / JSON-RPC over stdio)" --> connector
-    connector -- "HTTP GET + Bearer API key<br/>(HTTPS / JSON)" --> groupsio
+    System_Ext(groupsio, "Groups.io API", "REST API at groups.io/api/v1 (marked ALPHA)")
+
+    Rel(user, claude, "Natural-language questions")
+    Rel(claude, connector, "Tool calls", "MCP / JSON-RPC over stdio")
+    Rel(connector, groupsio, "HTTP GET + Bearer API key", "HTTPS / JSON")
+
+    UpdateRelStyle(user, claude, $offsetY="-10")
+    UpdateRelStyle(claude, connector, $offsetX="-40", $offsetY="-10")
+    UpdateRelStyle(connector, groupsio, $offsetX="-40", $offsetY="-10")
 ```
 
 Key properties of the boundary:
